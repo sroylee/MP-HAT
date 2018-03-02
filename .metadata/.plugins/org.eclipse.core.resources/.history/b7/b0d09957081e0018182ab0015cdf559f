@@ -16,7 +16,6 @@ import tool.KeyValuePair;
 public class Dataset {
 	public String path;
 	public int nUsers;
-	public int[] nPlatformUsers;
 	public int nPlatforms;
 	public User[] users;
 	public int nLinks = 0;
@@ -24,7 +23,7 @@ public class Dataset {
 
 	// for selecting non-links
 	private KeyValuePair[] userRankByNFollowers;
-	private KeyValuePair[] userRankByNFollowings;
+	private KeyValuePair[] userRankByNFollowees;
 
 	// public int nWords; // number of words in vocabulary
 	public String[] vocabulary;
@@ -51,9 +50,7 @@ public class Dataset {
 			loadRelationship(String.format("%s/relationships.csv", path));
 			// System.out.println("loading non-links");
 			// loadNonRelationship(String.format("%s/nonrelationships.csv", path));
-			for (int p=0; p<Configure.NUM_OF_PLATFORM;p++){
-				selectNonRelationship(batch,p);
-			}
+			selectNonRelationship(batch);
 			System.out.println("#Links:" + nLinks);
 			System.out.println("#NonLinks:" + nNonLinks);
 		}
@@ -94,12 +91,6 @@ public class Dataset {
 					users[u].userIndex = u;
 					userId2Index.put(userId, u);
 					userIndex2Id.put(u, userId);
-					//Check the user has account with which platform (each column represent a platform. 1 represent present, 0 otherwise
-					for (int p=0; p<Configure.NUM_OF_PLATFORM;p++){
-						int flag = sc.nextInt();
-						nPlatformUsers[p] += flag;
-						users[u].platforms[p] = flag;
-					}
 					u++;
 				}
 			}
@@ -162,7 +153,6 @@ public class Dataset {
 				}
 				users[u].posts[users[u].nPosts].platform = platform;
 				users[u].nPosts++;
-				users[u].nPlatformPosts[platform]++;
 			}
 			br.close();
 		} catch (Exception e) {
@@ -258,14 +248,11 @@ public class Dataset {
 				users[des_user_index].followers[users[des_user_index].nFollowers].platform = platform;
 				users[des_user_index].followerBatches[users[des_user_index].nFollowers] = batch;
 				users[des_user_index].nFollowers++;
-				users[des_user_index].nPlatformFollowers[platform]++;
-				
 
 				users[src_user_index].followings[users[src_user_index].nFollowings].followingIndex = des_user_index;
 				users[src_user_index].followings[users[src_user_index].nFollowings].platform = platform;
 				users[src_user_index].followingBatches[users[src_user_index].nFollowings] = batch;
 				users[src_user_index].nFollowings++;
-				users[src_user_index].nPlatformFollowings[platform]++;
 				if (batch == 1) {
 					nLinks++;
 				}
@@ -279,71 +266,65 @@ public class Dataset {
 		}
 	}
 
-	private void rankUserbyPopuarlity(int platform) {
+	private void rankUserbyPopuarlity() {
 		userRankByNFollowers = new KeyValuePair[nUsers];
-		userRankByNFollowings = new KeyValuePair[nUsers];
+		userRankByNFollowees = new KeyValuePair[nUsers];
 		for (int u = 0; u < nUsers; u++) {
 			userRankByNFollowers[u] = new KeyValuePair(u, users[u].nFollowers);
-			userRankByNFollowings[u] = new KeyValuePair(u, users[u].nFollowings);
+			userRankByNFollowees[u] = new KeyValuePair(u, users[u].nFollowings);
 		}
 		Arrays.sort(userRankByNFollowers);
-		Arrays.sort(userRankByNFollowings);
+		Arrays.sort(userRankByNFollowees);
 	}
 
-	public void selectNonRelationship(int batch, int platform) {
-		rankUserbyPopuarlity(platform);
+	public void selectNonRelationship(int batch) {
+		rankUserbyPopuarlity();
 
-		int[] userNonFollowerCounts = new int[nPlatformUsers[platform]];
-		int[] maxNonFollowers = new int[nPlatformUsers[platform]];
+		int[] userNonFollowerCounts = new int[nUsers];
+		int[] maxNonFollowers = new int[nUsers];
 
 		HashMap<Integer, HashSet<Integer>> userNonFollowers = new HashMap<Integer, HashSet<Integer>>();
 
 		for (int u = 0; u < nUsers; u++) {
-			maxNonFollowers[u] = (int) ((nUsers - users[u].nPlatformFollowers[platform] - 1) * Configure.PROPTION_OF_NONLINKS);
+			maxNonFollowers[u] = (int) ((nUsers - users[u].nFollowers - 1) * Configure.PROPTION_OF_NONLINKS);
 			userNonFollowerCounts[u] = 0;
 		}
 
 		for (int r = 0; r < nUsers; r++) {
-			int u = userRankByNFollowings[r].getIntKey();
+			int u = userRankByNFollowees[r].getIntKey();
 			// this will make most of the non-links are from less-followees
 			// users to many-followers (e.g., popular) users
 
 			// get followee set
-			HashSet<Integer> followings = new HashSet<Integer>();
+			HashSet<Integer> followees = new HashSet<Integer>();
 			for (int i = 0; i < users[u].nFollowings; i++) {
 				if (users[u].followingBatches[i] != batch) {
 					continue;
 				}
-				if (users[u].followings[i].platform != platform){
-					continue;
-				}
-				followings.add(users[u].followings[i].followingIndex);
+				followees.add(users[u].followings[i]);
 			}
 
-			// #selected non-followings:
-			int nNonFollowings = (int) ((nPlatformUsers[platform] - users[u].nPlatformFollowings[platform] - 1) * Configure.PROPTION_OF_NONLINKS);
+			// #selected non-followees:
+			int nNonFollowees = (int) ((nUsers - users[u].nFollowings - 1) * Configure.PROPTION_OF_NONLINKS);
 
-			// select non-followings
-			HashSet<Integer> nonfollwings = new HashSet<Integer>();
+			// select non-followees
+			HashSet<Integer> nonfollwees = new HashSet<Integer>();
 			// (1): select from popular users
-			int nPopularUsers = (int) (nPlatformUsers[platform] * Configure.PROPTION_OF_POPULAR_USERS);
+			int nPopularUsers = (int) (nUsers * Configure.PROPTION_OF_POPULAR_USERS);
 			for (int i = 0; i < nPopularUsers; i++) {
 				int v = userRankByNFollowers[nUsers - i - 1].getIntKey();
 				if (v == u) {
 					continue;
 				}
-				if (followings.contains(v)) {
+				if (followees.contains(v)) {
 					continue;
 				}
 				if (userNonFollowerCounts[v] >= maxNonFollowers[v]) {
 					continue;
 				}
-				if (users[v].platforms[platform]==0){
-					continue;
-				}
 
-				nonfollwings.add(v);
-				nNonFollowings--;
+				nonfollwees.add(v);
+				nNonFollowees--;
 
 				userNonFollowerCounts[v]++;
 
@@ -355,39 +336,30 @@ public class Dataset {
 					userNonFollowers.put(v, nonFollowers);
 				}
 
-				if (nNonFollowings == 0) {
+				if (nNonFollowees == 0) {
 					break;
 				}
 			}
 
 			// (2): if not enough, select the remaining from top non-followees
 			// of followees
-			if (nNonFollowings > 0) {
+			if (nNonFollowees > 0) {
 				// get nonfollwees among followees of followees
 				HashMap<Integer, Integer> followeesOfFollowees = new HashMap<Integer, Integer>();
 				for (int i = 0; i < users[u].nFollowings; i++) {
 					if (users[u].followingBatches[i] != batch) {
 						continue;
 					}
-					if (users[u].followings[i].platform != platform) {
-						continue;
-					}
-					int v = users[u].followings[i].followingIndex;
+					int v = users[u].followings[i];
 					for (int j = 0; j < users[v].nFollowings; j++) {
 						if (users[v].followingBatches[j] != batch) {
 							continue;
 						}
-						if (users[v].followings[j].platform != platform) {
-							continue;
-						}
-						int w = users[v].followings[j].followingIndex;
+						int w = users[v].followings[j];
 						if (w == u) {
 							continue;
 						}
-						if (followings.contains(w) || users[u].userId.equals(users[w].userId)) {
-							continue;
-						}
-						if (users[w].platforms[platform] != 1){
+						if (followees.contains(w) || users[u].userId.equals(users[w].userId)) {
 							continue;
 						}
 						if (followeesOfFollowees.containsKey(w)) {
@@ -401,12 +373,12 @@ public class Dataset {
 				PriorityBlockingQueue<KeyValuePair> queue = new PriorityBlockingQueue<KeyValuePair>();
 				for (Map.Entry<Integer, Integer> pair : followeesOfFollowees.entrySet()) {
 
-					if (nonfollwings.contains(pair.getKey())) {
+					if (nonfollwees.contains(pair.getKey())) {
 						// already among the popular users
 						continue;
 					}
 
-					if (queue.size() < nNonFollowings) {
+					if (queue.size() < nNonFollowees) {
 						queue.add(new KeyValuePair(pair.getKey(), pair.getValue()));
 					} else {
 						KeyValuePair head = queue.peek();
@@ -430,28 +402,25 @@ public class Dataset {
 						nonFollowers.add(u);
 						userNonFollowers.put(v, nonFollowers);
 					}
-					nonfollwings.add(v);
-					nNonFollowings--;
-					if (nNonFollowings == 0) {
+					nonfollwees.add(v);
+					nNonFollowees--;
+					if (nNonFollowees == 0) {
 						break;
 					}
 				}
 			}
 			// (3): if still not enough, continue to select from less popular
 			// users
-			if (nNonFollowings > 0) {
+			if (nNonFollowees > 0) {
 				for (int i = nPopularUsers; i < nUsers; i++) {
-					int v = userRankByNFollowers[nPlatformUsers[platform] - i - 1].getIntKey();
+					int v = userRankByNFollowers[nUsers - i - 1].getIntKey();
 					if (v == u) {
 						continue;
 					}
-					if (followings.contains(v) || users[u].userId.equals(users[v].userId)) {
+					if (followees.contains(v) || users[u].userId.equals(users[v].userId)) {
 						continue;
 					}
 					if (userNonFollowerCounts[v] >= maxNonFollowers[v]) {
-						continue;
-					}
-					if (users[v].platforms[platform] !=1){
 						continue;
 					}
 					userNonFollowerCounts[v]++;
@@ -462,9 +431,9 @@ public class Dataset {
 						nonFollowers.add(u);
 						userNonFollowers.put(v, nonFollowers);
 					}
-					nonfollwings.add(v);
-					nNonFollowings--;
-					if (nNonFollowings == 0) {
+					nonfollwees.add(v);
+					nNonFollowees--;
+					if (nNonFollowees == 0) {
 						break;
 					}
 				}
@@ -472,13 +441,11 @@ public class Dataset {
 
 			// add into user's non-followee list
 			users[u].nNonFollowings = 0;
-			users[u].nonFollowings = new Following[nonfollwings.size()];
-			users[u].nonFollowingBatches = new int[nonfollwings.size()];
-			for (int v : nonfollwings) {
-				users[u].nonFollowings[users[u].nNonFollowings].followingIndex = v;
-				users[u].nonFollowings[users[u].nNonFollowings].platform = platform;
+			users[u].nonFollowings = new int[nonfollwees.size()];
+			users[u].nonFollowingBatches = new int[nonfollwees.size()];
+			for (int v : nonfollwees) {
+				users[u].nonFollowings[users[u].nNonFollowings] = v;
 				users[u].nonFollowingBatches[users[u].nNonFollowings] = 1;
-				users[u].nPlatformNonFollowings[platform]++;
 				users[u].nNonFollowings++;
 				nNonLinks++;
 			}
@@ -490,17 +457,86 @@ public class Dataset {
 			if (nonFollowers == null) {
 				continue;
 			}
-			users[v].nonFollowers = new Follower[nonFollowers.size()];
+			users[v].nonFollowers = new int[nonFollowers.size()];
 			users[v].nNonFollowers = 0;
 			for (int u : nonFollowers) {
-				users[v].nonFollowers[users[v].nNonFollowers].followerIndex = u;
-				users[v].nonFollowers[users[v].nNonFollowers].platform = platform;
-				users[v].nPlatformNonFollowers[platform]++;
+				users[v].nonFollowers[users[v].nNonFollowers] = u;
 				users[v].nNonFollowers++;
 			}
 			//System.out.println(users[v].userId + " " + users[v].nonFollowers.length);
 		}
 
+	}
+
+	public void loadNonRelationship(String filename) {
+
+		BufferedReader br = null;
+		String line = null;
+
+		for (int u = 0; u < nUsers; u++) {
+			users[u].nNonFollowers = 0;
+			users[u].nNonFollowings = 0;
+		}
+
+		try {
+			File file = new File(filename);
+
+			// Get total number of users' followers and following
+			br = new BufferedReader(new FileReader(file.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String src_user = tokens[0];
+				String des_user = tokens[1];
+
+				int src_user_index = userId2Index.get(src_user);
+				int des_user_index = userId2Index.get(des_user);
+				// update follower count
+				users[des_user_index].nNonFollowers++;
+				// update following count
+				users[src_user_index].nNonFollowings++;
+
+			}
+
+			br.close();
+
+			// initalize the users' follower and following arrays
+			for (int u = 0; u < nUsers; u++) {
+				if (users[u].nNonFollowers > 0) {
+					users[u].nonFollowers = new int[users[u].nNonFollowers];
+					users[u].nNonFollowers = 0;
+				}
+				if (users[u].nNonFollowings > 0) {
+					users[u].nonFollowings = new int[users[u].nNonFollowings];
+					users[u].nonFollowingBatches = new int[users[u].nNonFollowings];
+					users[u].nNonFollowings = 0;
+				}
+			}
+
+			// Read and load user into users' follower and following array
+			br = new BufferedReader(new FileReader(file.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String src_user = tokens[0];
+				String des_user = tokens[1];
+				int batch = Integer.parseInt(tokens[2]);
+				int src_user_index = userId2Index.get(src_user);
+				int des_user_index = userId2Index.get(des_user);
+				users[des_user_index].nonFollowers[users[des_user_index].nNonFollowers] = src_user_index;
+				users[des_user_index].nNonFollowers++;
+
+				users[src_user_index].nonFollowings[users[src_user_index].nNonFollowings] = des_user_index;
+				users[src_user_index].nonFollowingBatches[users[src_user_index].nNonFollowings] = batch;
+				users[src_user_index].nNonFollowings++;
+				if (batch == 1) {
+					nNonLinks++;
+				}
+			}
+			br.close();
+		} catch (Exception e) {
+			System.out.println("Error in reading user file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
 	}
 
 	public static void main(String[] args) {
@@ -521,9 +557,8 @@ public class Dataset {
 			for (int u = 0; u < users.length; u++) {
 				String uid = users[u].userId;
 				for (int v = 0; v < users[u].nonFollowings.length; v++) {
-					String vid = users[users[u].nonFollowings[v].followingIndex].userId;
-					int platform = users[u].nonFollowings[v].platform;
-					fo.write(uid + "," + vid + "," + platform + "\n");
+					String vid = users[users[u].nonFollowings[v]].userId;
+					fo.write(uid + "," + vid + "\n");
 				}
 			}
 			fo.close();
