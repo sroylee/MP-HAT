@@ -48,8 +48,8 @@ public class MPHAT {
 											// for each k = 1
 
 	public double[][] optTopicWordDist = null; // optimized topicWordDist[k][w]
-	
-	// 
+
+	//
 
 	// options for learning
 	public double lineSearch_alpha = 0.0001;
@@ -70,7 +70,7 @@ public class MPHAT {
 	 */
 	public MPHAT(String _datasetPath, int _nTopics, int _batch) {
 		this.datapath = _datasetPath;
-		this.dataset = new Dataset(_datasetPath,_batch,false);
+		this.dataset = new Dataset(_datasetPath, _batch, false);
 		this.nTopics = _nTopics;
 		this.batch = _batch;
 		n_zu = new int[nTopics][dataset.nUsers];
@@ -79,7 +79,7 @@ public class MPHAT {
 		sum_nzw = new int[nTopics];
 		topicWordDist = new double[nTopics][dataset.vocabulary.length];
 	}
-	
+
 	/***
 	 * get likelihood of the whole dataset
 	 * 
@@ -92,13 +92,13 @@ public class MPHAT {
 		// value can be more than 1
 		// sum of eqn 1 -10
 		return 0;
-		
+
 	}
 
 	/***
 	 * compute likelihood of data as a function of topical interest of u when
-	 * the interest is x, i.e., if L(data|parameters) = f(X_u) +
-	 * const-of-X_u then this function returns f(x)
+	 * the interest is x, i.e., if L(data|parameters) = f(X_u) + const-of-X_u
+	 * then this function returns f(x)
 	 * 
 	 * @param u
 	 * @return
@@ -110,9 +110,8 @@ public class MPHAT {
 
 	/***
 	 * compute gradient of likelihood of data with respect to interest of u in
-	 * topic k when the interest is x, i.e., if if L(data|parameters) =
-	 * f(X_u) + const-of-X_u then this function return df/dX_uk at
-	 * X_uk = x
+	 * topic k when the interest is x, i.e., if if L(data|parameters) = f(X_u) +
+	 * const-of-X_u then this function return df/dX_uk at X_uk = x
 	 * 
 	 * @param u
 	 * @param k
@@ -122,13 +121,13 @@ public class MPHAT {
 	private double gradLikelihood_topicalInterest(int u, int k, double x) {
 		// Refer to Eqn 18 in Learning paper
 		return 0;
-		
+
 	}
-	
+
 	/***
-	 * compute likelihood of data as a function of platform preference for topic k of u when
-	 * the preference is x, i.e., if L(data|parameters) = f(Eta_uk) +
-	 * const-of-Eta_uk then this function returns f(x)
+	 * compute likelihood of data as a function of platform preference for topic
+	 * k of u when the preference is x, i.e., if L(data|parameters) = f(Eta_uk)
+	 * + const-of-Eta_uk then this function returns f(x)
 	 * 
 	 * @param u
 	 * @return
@@ -139,10 +138,10 @@ public class MPHAT {
 	}
 
 	/***
-	 * compute gradient of likelihood of data with respect to platform preference of u in
-	 * topic k when the preference is x, i.e., if if L(data|parameters) =
-	 * f(Eta_uk) + const-of-Eta_uk then this function return df/dEta_ukp at
-	 * Eta_ukp = x
+	 * compute gradient of likelihood of data with respect to platform
+	 * preference of u in topic k when the preference is x, i.e., if if
+	 * L(data|parameters) = f(Eta_uk) + const-of-Eta_uk then this function
+	 * return df/dEta_ukp at Eta_ukp = x
 	 * 
 	 * @param u
 	 * @param k
@@ -152,12 +151,12 @@ public class MPHAT {
 	private double gradLikelihood_platformPreference(int u, int k, double x) {
 		// Refer to Eqn 30 in Learning paper
 		return 0;
-		
+
 	}
 
-	
 	private double[] simplexProjection(double[] x, double z) {
 		// this will be replaced by the softmax function
+		// Tuan-Anh: yes, this will be removed
 		return null;
 	}
 
@@ -167,7 +166,7 @@ public class MPHAT {
 	 * @param u
 	 */
 	private void altOptimize_topicalInterest(int u) {
-		
+
 	}
 
 	/***
@@ -205,7 +204,7 @@ public class MPHAT {
 	 * @param u
 	 */
 	private void altOptimize_Authorities(int u) {
-		
+
 	}
 
 	/***
@@ -218,7 +217,7 @@ public class MPHAT {
 	 * @return
 	 */
 	private double getLikelihood_hub(int u, double[] x) {
-		//Refer to Eqn 20 in learning paper
+		// Refer to Eqn 20 in learning paper
 		return 0;
 	}
 
@@ -233,7 +232,7 @@ public class MPHAT {
 	 * @return
 	 */
 	private double gradLikelihood_hub(int u, int k, double x) {
-		//Refer to Eqn 22 in learning paper
+		// Refer to Eqn 22 in learning paper
 		return 0;
 	}
 
@@ -243,14 +242,14 @@ public class MPHAT {
 	 * @param u
 	 */
 	private void altOptimize_Hubs(int u) {
-		
+
 	}
 
 	/***
 	 * alternating step to optimize topics' word distribution
 	 */
 	private void altOptimize_topics() {
-		
+
 	}
 
 	/***
@@ -260,10 +259,20 @@ public class MPHAT {
 	 * @param n
 	 */
 	private void sampleTopic(int u, int n) {
-		//Are we still using gib sampling for this?
-		//How about the platform selection for the post?
+		// Are we still using gib sampling for this?
+		// How about the platform selection for the post?
+		// Tuan-Anh: yes, we use gibbs samling for this
+		// Tuan-Anh: refer to Equation 31 in
 	}
 
+	/***
+	 * alternating step to optimize platform preference of user u for topic k
+	 * 
+	 * @param u
+	 * @param k
+	 */
+	private void altOptimize_PlatformPreference(int u, int k) {
+		// Tuan-Anh: we need this function to learn users' topic-specific
+		// platform preference
 	}
-
-	
+}
