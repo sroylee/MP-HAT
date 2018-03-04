@@ -54,7 +54,7 @@ public class MathTool {
 		System.out.printf("logSum = %f", log10Sum(x));
 	}
 
-	public double[] softmax(double[] x) {
+	public static double[] softmax(double[] x) {
 		double max = Double.NEGATIVE_INFINITY;
 		for (int i = 0; i < x.length; i++) {
 			if (max < x[i]) {
