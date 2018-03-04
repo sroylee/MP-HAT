@@ -105,7 +105,41 @@ public class MPHAT {
 	 */
 	private double getLikelihood_topicalInterest(int u, double[] x) {
 		// Refer to Eqn 16 in Learning paper for Formula
-		return 0;
+		
+		double authorityLikelihood = 0;
+		double hubLikelihood = 0;
+		double postLikelihood = 0;
+		double topicLikelihood = 0;
+		double finalLikelihood = 0;
+
+		// Set the current user to be u
+		User currUser = dataset.users[u];
+
+		for (int k = 0; k < nTopics; k++) {
+			authorityLikelihood += -Math.pow((Math.log(currUser.authorities[k]) - x[k]), 2) / (2 * Math.pow(delta, 2));
+		}
+
+		for (int k = 0; k < nTopics; k++) {
+			hubLikelihood += -Math.pow((Math.log(currUser.hubs[k]) - x[k]), 2) / (2 * Math.pow(sigma, 2));
+		}
+
+		for (int i = 0; i < currUser.nPosts; i++) {
+			// Only compute post likelihood of posts which are in batch (i.e.
+			// training batch = 1)
+			if (currUser.postBatches[i] == batch) {
+				int postTopic = currUser.posts[i].topic;
+				// postLikelihood += x[postTopic];
+				postLikelihood += Math.log(x[postTopic]);
+			}
+		}
+
+		for (int k = 0; k < nTopics; k++) {
+			topicLikelihood += (alpha - 1) * Math.log(x[k]);
+		}
+		
+		finalLikelihood = authorityLikelihood + hubLikelihood + postLikelihood;
+		return finalLikelihood;
+		
 	}
 
 	/***
