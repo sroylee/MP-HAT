@@ -53,4 +53,23 @@ public class MathTool {
 		double[] x = new double[] { -100, -102, -103 };
 		System.out.printf("logSum = %f", log10Sum(x));
 	}
+
+	public double[] softmax(double[] x) {
+		double max = Double.NEGATIVE_INFINITY;
+		for (int i = 0; i < x.length; i++) {
+			if (max < x[i]) {
+				max = x[i];
+			}
+		}
+		double[] a = new double[x.length];
+		double sum = 0;
+		for (int i = 0; i < x.length; i++) {
+			a[i] = Math.exp(x[i] - max);
+			sum += a[i];
+		}
+		for (int i = 0; i < x.length; i++) {
+			a[i] /= sum;
+		}
+		return a;
+	}
 }
