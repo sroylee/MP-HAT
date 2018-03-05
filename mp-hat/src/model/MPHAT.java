@@ -48,9 +48,7 @@ public class MPHAT {
 											// for each k = 1
 
 	public double[][] optTopicWordDist = null; // optimized topicWordDist[k][w]
-
-	//
-
+	
 	// options for learning
 	public double lineSearch_alpha = 0.0001;
 	public double lineSearch_beta = 0.1;
@@ -62,6 +60,8 @@ public class MPHAT {
 	public int maxIteration_Hubs = 10;
 
 	public int max_GibbsEM_Iterations = 500;
+	
+	private static Configure.ModelMode mode;
 
 	/***
 	 * 
@@ -111,35 +111,36 @@ public class MPHAT {
 		double postLikelihood = 0;
 		double topicLikelihood = 0;
 		double finalLikelihood = 0;
+		double denominator = 0;
 
 		// Set the current user to be u
 		User currUser = dataset.users[u];
 
 		for (int k = 0; k < nTopics; k++) {
-			authorityLikelihood += -Math.pow((Math.log(currUser.authorities[k]) - x[k]), 2) / (2 * Math.pow(delta, 2));
+			//First term in eqn 16
+			hubLikelihood += -((currUser.hubs[k]*delta)/x[k]) - (delta*Math.log(x[k]));
+			
+			//Second term in eqn 16
+			authorityLikelihood += -((currUser.authorities[k]*sigma)/x[k]) - (sigma*Math.log(x[k]));
+			
+			//Fourth term in eqn 16
+			topicLikelihood += ((kappa-1) * Math.log(x[k])) - (x[k]/theta);		
+		
+			//denominator of third term in eqn 16
+			denominator += Math.exp(x[k]);	
 		}
-
-		for (int k = 0; k < nTopics; k++) {
-			hubLikelihood += -Math.pow((Math.log(currUser.hubs[k]) - x[k]), 2) / (2 * Math.pow(sigma, 2));
-		}
-
+		
 		for (int i = 0; i < currUser.nPosts; i++) {
-			// Only compute post likelihood of posts which are in batch (i.e.
-			// training batch = 1)
+			// Only compute post likelihood of posts which are in batch (i.e. training batch = 1)
 			if (currUser.postBatches[i] == batch) {
+				//Third term in eqn 16
 				int postTopic = currUser.posts[i].topic;
-				// postLikelihood += x[postTopic];
-				postLikelihood += Math.log(x[postTopic]);
+				postLikelihood += Math.exp(x[postTopic])/denominator ;
+				
 			}
 		}
-
-		for (int k = 0; k < nTopics; k++) {
-			topicLikelihood += (alpha - 1) * Math.log(x[k]);
-		}
-		
-		finalLikelihood = authorityLikelihood + hubLikelihood + postLikelihood;
+		finalLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + topicLikelihood;
 		return finalLikelihood;
-		
 	}
 
 	/***
@@ -154,37 +155,38 @@ public class MPHAT {
 	 */
 	private double gradLikelihood_topicalInterest(int u, int k, double x) {
 		// Refer to Eqn 18 in Learning paper
-		return 0;
+		double authorityLikelihood = 0;
+		double hubLikelihood = 0;
+		double postLikelihood = 0;
+		double topicLikelihood = 0;
+		double gradLikelihood = 0;
 
-	}
+		// Set the current user to be u
+		User currUser = dataset.users[u];
 
-	/***
-	 * compute likelihood of data as a function of platform preference for topic
-	 * k of u when the preference is x, i.e., if L(data|parameters) = f(Eta_uk)
-	 * + const-of-Eta_uk then this function returns f(x)
-	 * 
-	 * @param u
-	 * @return
-	 */
-	private double getLikelihood_platformPreference(int u, double[] x) {
-		// Refer to Eqn 28 in Learning paper for Formula
-		return 0;
-	}
-
-	/***
-	 * compute gradient of likelihood of data with respect to platform
-	 * preference of u in topic k when the preference is x, i.e., if if
-	 * L(data|parameters) = f(Eta_uk) + const-of-Eta_uk then this function
-	 * return df/dEta_ukp at Eta_ukp = x
-	 * 
-	 * @param u
-	 * @param k
-	 * @param x
-	 * @return
-	 */
-	private double gradLikelihood_platformPreference(int u, int k, double x) {
-		// Refer to Eqn 30 in Learning paper
-		return 0;
+		//First term in eqn 18
+		hubLikelihood = ((currUser.hubs[k]*delta)/Math.pow(x, 2)) - (delta/x);
+		
+		//Second term in eqn 18
+		authorityLikelihood = ((currUser.authorities[k]*sigma)/Math.pow(x, 2)) - (sigma/x);
+		
+		//Third term in eqn 18
+		for (int i = 0; i < currUser.nPosts; i++) {
+			// Only compute post likelihood of posts which are in batch (i.e. training batch = 1)
+			if (currUser.postBatches[i] == batch) {
+				// Only consider posts which are assigned topic k (i.e. z_{v,s} = k)
+				if (currUser.posts[i].topic == k) {
+					//Third term in eqn 18 seems odd. There is a need to compute the denominator which is sum_k
+				}
+			}
+		}
+		
+		//First term in eqn 18
+		topicLikelihood = ((kappa-1)/x) - (1/theta);
+		
+		gradLikelihood = authorityLikelihood + hubLikelihood + postLikelihood;
+		
+		return gradLikelihood;
 
 	}
 
@@ -214,7 +216,73 @@ public class MPHAT {
 	 */
 	private double getLikelihood_authority(int v, double[] x) {
 		// Refer to Eqn 24 in Learning paper
-		return 0;
+		double followerLikelihood = 0;
+		double nonFollowerLikelihood = 0;
+		double postLikelihood = 0;
+		double likelihood = 0;
+
+		// Set the current user to be v
+		User currUser = dataset.users[v];
+
+		// First term in eqn 24. Compute follower likelihood. 
+		if (currUser.followers != null) {
+			for (int i = 0; i < currUser.followers.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int u = currUser.followers[i].followerIndex;
+					User follower = dataset.users[u];
+					int followerPlatform = currUser.followers[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider follower relationships in the platform
+						if (followerPlatform == p){
+							// Compute H_u^p * A_v^p
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * x[z] * follower.topicalPlatformPreference[z][p];// now A_v is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); // do we still need this part? This is the modified sigmoid function to make the between 0 - 1
+							followerLikelihood += Math.log(fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		
+		// Second term in eqn 24. Compute non follower likelihood. 
+		if (currUser.nonFollowers != null) {
+			for (int i = 0; i < currUser.nonFollowers.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int u = currUser.nonFollowers[i].followerIndex;
+					User nonFollower = dataset.users[u];
+					int nonFollowerPlatform = currUser.nonFollowers[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider nonfollower relationships in the platform
+						if (nonFollowerPlatform == p){
+							// Compute H_u * A_v
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * x[z] * nonFollower.topicalPlatformPreference[z][p];// now A_v is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							nonFollowerLikelihood += Math.log(1 - fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		// Third term in eqn 24. Compute post likelihood.
+		for (int k = 0; k < nTopics; k++) {
+			postLikelihood += ((sigma-1)*Math.log(x[k])) - ((x[k]*sigma)/currUser.topicalInterests[k]) ;// now A_v is x
+		}
+
+		likelihood = nonFollowerLikelihood + followerLikelihood + postLikelihood;
+		
+		return likelihood;
 	}
 
 	/***
@@ -229,7 +297,53 @@ public class MPHAT {
 	 */
 	private double gradLikelihood_authority(int v, int k, double x) {
 		// Refer to Eqn 26 in Learning paper
-		return 0;
+		double followerLikelihood = 0;
+		double nonFollowerLikelihood = 0;
+		double postLikelihood = 0;
+		double gradLikelihood = 0;
+
+		// Set the current user to be v
+		User currUser = dataset.users[v];
+		
+		// First term in eqn 26. Compute follower likelihood
+		if (currUser.followers != null) {
+			for (int i = 0; i < currUser.followers.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int u = currUser.followers[i].followerIndex;
+					User follower = dataset.users[u];
+					int followerPlatform = currUser.followers[i].platform;
+					
+					//only consider this user if he exist in the platform and the follower relationship is in this platform
+					if (currUser.platforms[p] == 1 && followerPlatform == p){
+						
+						// Compute H_u^p * A_v^p
+						double HupAvp = 0;
+						double Hup = 0;
+						for (int z = 0; z < nTopics; z++) {
+							if (z == k) {
+								HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] *  x * follower.topicalPlatformPreference[z][p];
+							} else {
+								HupAvp += follower.hubs[z]* follower.topicalPlatformPreference[z][p] * currUser.authorities[z] * follower.topicalPlatformPreference[z][p];
+							}
+							Hup = follower.hubs[z]* follower.topicalPlatformPreference[z][p] * follower.topicalPlatformPreference[z][p];
+						}
+						HupAvp = HupAvp * lamda;
+						Hup = Hup * lamda;
+						followerLikelihood += ((1/(1-Math.exp(HupAvp))) * -Math.exp(-HupAvp) * -Hup) - 
+								(1/(Math.exp(HupAvp)+1)) * Math.exp(-HupAvp) * (-Hup);
+						
+					} 
+				}
+			}
+		}		
+
+		
+
+		postLikelihood = ((Math.log(x) - currUser.topicalInterests[k]) / Math.pow(sigma, 2)) * (1 / x);
+
+		gradLikelihood = nonFollowerLikelihood + followerLikelihood - postLikelihood;
+
+		return gradLikelihood;
 	}
 
 	/***
@@ -297,6 +411,36 @@ public class MPHAT {
 		// How about the platform selection for the post?
 		// Tuan-Anh: yes, we use gibbs samling for this
 		// Tuan-Anh: refer to Equation 31 in
+	}
+	
+	/***
+	 * compute likelihood of data as a function of platform preference for topic
+	 * k of u when the preference is x, i.e., if L(data|parameters) = f(Eta_uk)
+	 * + const-of-Eta_uk then this function returns f(x)
+	 * 
+	 * @param u
+	 * @return
+	 */
+	private double getLikelihood_platformPreference(int u, double[] x) {
+		// Refer to Eqn 28 in Learning paper for Formula
+		return 0;
+	}
+
+	/***
+	 * compute gradient of likelihood of data with respect to platform
+	 * preference of u in topic k when the preference is x, i.e., if if
+	 * L(data|parameters) = f(Eta_uk) + const-of-Eta_uk then this function
+	 * return df/dEta_ukp at Eta_ukp = x
+	 * 
+	 * @param u
+	 * @param k
+	 * @param x
+	 * @return
+	 */
+	private double gradLikelihood_platformPreference(int u, int k, double x) {
+		// Refer to Eqn 30 in Learning paper
+		return 0;
+
 	}
 
 	/***
