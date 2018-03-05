@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="quick_assist_proposal_size">
+	</section>
+	<section name="completion_proposal_size">
+		<item value="220" key="size.y"/>
+		<item value="308" key="size.x"/>
+	</section>
+	<section name="JavaElementSearchActions">
+	</section>
+</section>
