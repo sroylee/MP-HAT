@@ -160,7 +160,7 @@ public class MPHAT {
 		double postLikelihood = 0;
 		double topicLikelihood = 0;
 		double gradLikelihood = 0;
-
+		
 		// Set the current user to be u
 		User currUser = dataset.users[u];
 
@@ -171,20 +171,29 @@ public class MPHAT {
 		authorityLikelihood = ((currUser.authorities[k]*sigma)/Math.pow(x, 2)) - (sigma/x);
 		
 		//Third term in eqn 18
+		double denominator = 0;
+		for (int i = 0; i < nTopics; i++) {
+			denominator += Math.exp(currUser.topicalInterests[i]);	
+		}
 		for (int i = 0; i < currUser.nPosts; i++) {
 			// Only compute post likelihood of posts which are in batch (i.e. training batch = 1)
 			if (currUser.postBatches[i] == batch) {
 				// Only consider posts which are assigned topic k (i.e. z_{v,s} = k)
 				if (currUser.posts[i].topic == k) {
 					//Third term in eqn 18 seems odd. There is a need to compute the denominator which is sum_k
+					double sub_term = 0;
+					for (int j =0; j < currUser.nPosts; j++){
+						sub_term += (1/denominator) * x;
+					}
+					postLikelihood = 1 - sub_term;
 				}
 			}
 		}
 		
-		//First term in eqn 18
+		//Fourth term in eqn 18
 		topicLikelihood = ((kappa-1)/x) - (1/theta);
 		
-		gradLikelihood = authorityLikelihood + hubLikelihood + postLikelihood;
+		gradLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + topicLikelihood;
 		
 		return gradLikelihood;
 
@@ -242,7 +251,7 @@ public class MPHAT {
 								HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * x[z] * follower.topicalPlatformPreference[z][p];// now A_v is x
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); // do we still need this part? This is the modified sigmoid function to make the between 0 - 1
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
 							followerLikelihood += Math.log(fHupAvp);
 						}
 					}
@@ -315,29 +324,12 @@ public class MPHAT {
 					
 					//only consider this user if he exist in the platform and the follower relationship is in this platform
 					if (currUser.platforms[p] == 1 && followerPlatform == p){
-						
-						// Compute H_u^p * A_v^p
-						double HupAvp = 0;
-						double Hup = 0;
-						for (int z = 0; z < nTopics; z++) {
-							if (z == k) {
-								HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] *  x * follower.topicalPlatformPreference[z][p];
-							} else {
-								HupAvp += follower.hubs[z]* follower.topicalPlatformPreference[z][p] * currUser.authorities[z] * follower.topicalPlatformPreference[z][p];
-							}
-							Hup = follower.hubs[z]* follower.topicalPlatformPreference[z][p] * follower.topicalPlatformPreference[z][p];
-						}
-						HupAvp = HupAvp * lamda;
-						Hup = Hup * lamda;
-						followerLikelihood += ((1/(1-Math.exp(HupAvp))) * -Math.exp(-HupAvp) * -Hup) - 
-								(1/(Math.exp(HupAvp)+1)) * Math.exp(-HupAvp) * (-Hup);
+						// something looks strange for eqn 26
 						
 					} 
 				}
 			}
 		}		
-
-		
 
 		postLikelihood = ((Math.log(x) - currUser.topicalInterests[k]) / Math.pow(sigma, 2)) * (1 / x);
 
@@ -366,7 +358,73 @@ public class MPHAT {
 	 */
 	private double getLikelihood_hub(int u, double[] x) {
 		// Refer to Eqn 20 in learning paper
-		return 0;
+		double followingLikelihood = 0;
+		double nonFollowingLikelihood = 0;
+		double postLikelihood = 0;
+		double likelihood = 0;
+
+		// Set the current user to be v
+		User currUser = dataset.users[u];
+
+		// First term in eqn 20. Compute following likelihood. 
+		if (currUser.followings != null) {
+			for (int i = 0; i < currUser.followings.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int v = currUser.followings[i].followingIndex;
+					User following = dataset.users[v];
+					int followingPlatform = currUser.followings[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider follower relationships in the platform
+						if (followingPlatform == p){
+							// Compute H_u^p * A_v^p
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += x[z] * following.topicalPlatformPreference[z][p] * following.authorities[z] * following.topicalPlatformPreference[z][p];// now H_u is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
+							followingLikelihood += Math.log(fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		
+		// Second term in eqn 20. Compute non following likelihood. 
+		if (currUser.nonFollowings != null) {
+			for (int i = 0; i < currUser.nonFollowings.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int v = currUser.nonFollowings[i].followingIndex;
+					User nonFollowing = dataset.users[v];
+					int nonFollowingPlatform = currUser.nonFollowings[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider nonfollowing relationships in the platform
+						if (nonFollowingPlatform == p){
+							// Compute H_u * A_v
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += x[z] * nonFollowing.topicalPlatformPreference[z][p] * nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];// now H_u is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							nonFollowingLikelihood += Math.log(1 - fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		// Third term in eqn 20. Compute post likelihood.
+		for (int k = 0; k < nTopics; k++) {
+			postLikelihood += ((delta-1)*Math.log(x[k])) - ((x[k]*delta)/currUser.topicalInterests[k]) ;// now H_u is x
+		}
+
+		likelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
+		
+		return likelihood;
 	}
 
 	/***
@@ -421,9 +479,137 @@ public class MPHAT {
 	 * @param u
 	 * @return
 	 */
-	private double getLikelihood_platformPreference(int u, double[] x) {
+	private double getLikelihood_platformPreference(int u, double[][] x) {
 		// Refer to Eqn 28 in Learning paper for Formula
-		return 0;
+		double linkLikelihood = 0;
+		double nonLinkLikelihood = 0;
+		double postLikelihood = 0;
+		double platformLikelihood = 0;
+		double likelihood = 0;
+
+		// Set the current user to be v
+		User currUser = dataset.users[u];
+
+		// First term in eqn 28. Compute link likelihood. 
+		if (currUser.followings != null) {
+			for (int i = 0; i < currUser.followings.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int v = currUser.followings[i].followingIndex;
+					User following = dataset.users[v];
+					int followingPlatform = currUser.followings[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider follower relationships in the platform
+						if (followingPlatform == p){
+							// Compute H_u^p * A_v^p
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += currUser.hubs[z] * x[z][p] * following.authorities[z] * x[z][p];// now Eta_u,k is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
+							linkLikelihood += Math.log(fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		if (currUser.followers != null) {
+			for (int i = 0; i < currUser.followers.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int v = currUser.followers[i].followerIndex;
+					User follower = dataset.users[v];
+					int followerPlatform = currUser.followers[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider follower relationships in the platform
+						if (followerPlatform == p){
+							// Compute H_u^p * A_v^p
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += follower.hubs[z] * x[z][p] * currUser.authorities[z] * x[z][p];// now Eta_u,k is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
+							linkLikelihood += Math.log(fHupAvp);
+						}
+					}
+				}
+			}
+		}
+
+		// Second term in eqn 28. Compute non link likelihood. 
+		if (currUser.nonFollowings != null) {
+			for (int i = 0; i < currUser.nonFollowings.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int v = currUser.nonFollowings[i].followingIndex;
+					User nonFollowing = dataset.users[v];
+					int nonFollowingPlatform = currUser.nonFollowings[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider follower relationships in the platform
+						if (nonFollowingPlatform == p){
+							// Compute H_u^p * A_v^p
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += currUser.hubs[z] * x[z][p] * nonFollowing.authorities[z] * x[z][p];// now Eta_u,k is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
+							nonLinkLikelihood += Math.log(fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		if (currUser.nonFollowers != null) {
+			for (int i = 0; i < currUser.nonFollowers.length; i++) {
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					int v = currUser.nonFollowers[i].followerIndex;
+					User nonFollower = dataset.users[v];
+					int nonFollowerPlatform = currUser.nonFollowers[i].platform;
+					
+					//only consider this user if he exist in the platform
+					if (currUser.platforms[p] == 1){
+						//only consider follower relationships in the platform
+						if (nonFollowerPlatform == p){
+							// Compute H_u^p * A_v^p
+							double HupAvp = 0;
+							for (int z = 0; z < nTopics; z++) {
+								HupAvp += nonFollower.hubs[z] * x[z][p] * currUser.authorities[z] * x[z][p];// now Eta_u,k is x
+							}
+							HupAvp = HupAvp * lamda;
+							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
+							nonLinkLikelihood += Math.log(fHupAvp);
+						}
+					}
+				}
+			}
+		}
+		
+		// Third term in eqn 28. Compute post likelihood. 
+		for (int s=0; s < currUser.nPosts; s++){
+			int z = currUser.posts[s].topic;
+			int currP = currUser.posts[s].platform;
+			double denominator = 0;
+			for (int p =0; p < Configure.NUM_OF_PLATFORM; p++){
+				denominator += Math.exp(x[z][p]);
+			}
+			double nominator = Math.exp(x[z][currP]);
+			postLikelihood += Math.log(nominator/denominator);			
+		}
+		
+		// Fourth term in eqn 28. Compute platform likelihood.
+		for (int p =0; p < Configure.NUM_OF_PLATFORM; p++){
+			//platformLikelihood += 
+		}
+		
+		
+		
+		return likelihood;
 	}
 
 	/***
