@@ -479,7 +479,7 @@ public class MPHAT {
 	 * @param u
 	 * @return
 	 */
-	private double getLikelihood_platformPreference(int u, double[][] x) {
+	private double getLikelihood_platformPreference(int u,int k, double[] x) {
 		// Refer to Eqn 28 in Learning paper for Formula
 		double linkLikelihood = 0;
 		double nonLinkLikelihood = 0;
@@ -505,7 +505,12 @@ public class MPHAT {
 							// Compute H_u^p * A_v^p
 							double HupAvp = 0;
 							for (int z = 0; z < nTopics; z++) {
-								HupAvp += currUser.hubs[z] * x[z][p] * following.authorities[z] * x[z][p];// now Eta_u,k is x
+								if (z==k){
+									HupAvp += currUser.hubs[z] * x[p] * following.authorities[z] * x[z][p];// now Eta_u,k is x
+								} else{
+									HupAvp += currUser.hubs[z] * currUser.p[p] * following.authorities[z] * x[z][p];// now Eta_u,k is x
+								}
+								
 							}
 							HupAvp = HupAvp * lamda;
 							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
@@ -623,7 +628,7 @@ public class MPHAT {
 	 * @param x
 	 * @return
 	 */
-	private double gradLikelihood_platformPreference(int u, int k, double x) {
+	private double gradLikelihood_platformPreference(int u, int k, int p, double x) {
 		// Refer to Eqn 30 in Learning paper
 		return 0;
 
