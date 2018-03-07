@@ -199,12 +199,6 @@ public class MPHAT {
 
 	}
 
-	private double[] simplexProjection(double[] x, double z) {
-		// this will be replaced by the softmax function
-		// Tuan-Anh: yes, this will be removed
-		return null;
-	}
-
 	/***
 	 * alternating step to optimize topical interest of u
 	 * 
@@ -380,7 +374,7 @@ public class MPHAT {
 		// Third term in eqn 26. Compute post likelihood
 		postLikelihood = ((sigma-1)/x) - (sigma/currUser.topicalInterests[k]);
 
-		gradLikelihood = nonFollowerLikelihood + followerLikelihood - postLikelihood;
+		gradLikelihood = nonFollowerLikelihood + followerLikelihood + postLikelihood;
 
 		return gradLikelihood;
 	}
@@ -560,7 +554,7 @@ public class MPHAT {
 		// Third term in eqn 22. Compute post likelihood
 		postLikelihood = ((delta-1)/x) - (delta/currUser.topicalInterests[k]);
 
-		gradLikelihood = nonFollowingLikelihood + followingLikelihood - postLikelihood;
+		gradLikelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
 
 		return gradLikelihood;
 	}
@@ -571,29 +565,8 @@ public class MPHAT {
 	 * @param u
 	 */
 	private void altOptimize_Hubs(int u) {
-
 	}
 
-	/***
-	 * alternating step to optimize topics' word distribution
-	 */
-	private void altOptimize_topics() {
-
-	}
-
-	/***
-	 * to sample topic for post n of user u
-	 * 
-	 * @param u
-	 * @param n
-	 */
-	private void sampleTopic(int u, int n) {
-		// Are we still using gib sampling for this?
-		// How about the platform selection for the post?
-		// Tuan-Anh: yes, we use gibbs samling for this
-		// Tuan-Anh: refer to Equation 31 in
-	}
-	
 	/***
 	 * compute likelihood of data as a function of platform preference for topic
 	 * k of u when the preference is x, i.e., if L(data|parameters) = f(Eta_uk)
@@ -629,9 +602,9 @@ public class MPHAT {
 							double HupAvp = 0;
 							for (int z = 0; z < nTopics; z++) {
 								if (z==k){
-									HupAvp += currUser.hubs[z] * x[p] * following.authorities[z] * x[z][p];// now Eta_u,k is x
+									HupAvp += currUser.hubs[z] * x[p] * following.authorities[z] * following.topicalPlatformPreference[z][p];// now Eta_u,k is x
 								} else{
-									HupAvp += currUser.hubs[z] * currUser.p[p] * following.authorities[z] * x[z][p];// now Eta_u,k is x
+									HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z] * following.topicalPlatformPreference[z][p];
 								}
 								
 							}
@@ -657,7 +630,11 @@ public class MPHAT {
 							// Compute H_u^p * A_v^p
 							double HupAvp = 0;
 							for (int z = 0; z < nTopics; z++) {
-								HupAvp += follower.hubs[z] * x[z][p] * currUser.authorities[z] * x[z][p];// now Eta_u,k is x
+								if (z==k){
+									HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z] * x[p];// now Eta_u,k is x
+								} else{
+									HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+								}
 							}
 							HupAvp = HupAvp * lamda;
 							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
@@ -683,11 +660,15 @@ public class MPHAT {
 							// Compute H_u^p * A_v^p
 							double HupAvp = 0;
 							for (int z = 0; z < nTopics; z++) {
-								HupAvp += currUser.hubs[z] * x[z][p] * nonFollowing.authorities[z] * x[z][p];// now Eta_u,k is x
+								if (z==k){
+									HupAvp += currUser.hubs[z] * x[p] * nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];// now Eta_u,k is x
+								} else{
+									HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];
+								}
 							}
 							HupAvp = HupAvp * lamda;
 							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
-							nonLinkLikelihood += Math.log(fHupAvp);
+							nonLinkLikelihood += Math.log(1-fHupAvp);
 						}
 					}
 				}
@@ -707,11 +688,15 @@ public class MPHAT {
 							// Compute H_u^p * A_v^p
 							double HupAvp = 0;
 							for (int z = 0; z < nTopics; z++) {
-								HupAvp += nonFollower.hubs[z] * x[z][p] * currUser.authorities[z] * x[z][p];// now Eta_u,k is x
+								if (z==k){
+									HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * currUser.authorities[z] * x[p];// now Eta_u,k is x
+								} else {
+									HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+								}
 							}
 							HupAvp = HupAvp * lamda;
 							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5); 
-							nonLinkLikelihood += Math.log(fHupAvp);
+							nonLinkLikelihood += Math.log(1-fHupAvp);
 						}
 					}
 				}
@@ -724,18 +709,18 @@ public class MPHAT {
 			int currP = currUser.posts[s].platform;
 			double denominator = 0;
 			for (int p =0; p < Configure.NUM_OF_PLATFORM; p++){
-				denominator += Math.exp(x[z][p]);
+				denominator += Math.exp(currUser.topicalPlatformPreference[z][p]);
 			}
-			double nominator = Math.exp(x[z][currP]);
+			double nominator = Math.exp(currUser.topicalPlatformPreference[z][currP]);
 			postLikelihood += Math.log(nominator/denominator);			
 		}
 		
 		// Fourth term in eqn 28. Compute platform likelihood.
 		for (int p =0; p < Configure.NUM_OF_PLATFORM; p++){
-			//platformLikelihood += 
+			platformLikelihood += ((alpha-1) * Math.log(x[p])) - (x[p]/theta); 
 		}
 		
-		
+		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
 		
 		return likelihood;
 	}
@@ -753,6 +738,16 @@ public class MPHAT {
 	 */
 	private double gradLikelihood_platformPreference(int u, int k, int p, double x) {
 		// Refer to Eqn 30 in Learning paper
+		double linkLikelihood = 0;
+		double nonLinkLikelihood = 0;
+		double postLikelihood = 0;
+		double platformLikelihood = 0;
+		double likelihood = 0;
+
+		// Set the current user to be v
+		User currUser = dataset.users[u];
+				
+		
 		return 0;
 
 	}
@@ -766,5 +761,154 @@ public class MPHAT {
 	private void altOptimize_PlatformPreference(int u, int k) {
 		// Tuan-Anh: we need this function to learn users' topic-specific
 		// platform preference
+	}
+	
+	private double[] simplexProjection(double[] x, double z) {
+		// this will be replaced by the softmax function
+		// Tuan-Anh: yes, this will be removed
+		return null;
+	}
+
+	/***
+	 * to sample platform for post n of user u
+	 * 
+	 * @param u
+	 * @param n
+	 */
+	private void samplePlatform(int u,int n){
+		
+	}
+	
+	/***
+	 * to sample topic for post n of user u
+	 * 
+	 * @param u
+	 * @param n
+	 */
+	private void sampleTopic(int u, int n) {
+		// Are we still using gib sampling for this?
+		// How about the platform selection for the post?
+		// Tuan-Anh: yes, we use gibbs samling for this
+		// Tuan-Anh: refer to Equation 31 in
+	}
+	
+	/***
+	 * alternating step to optimize topics' word distribution
+	 */
+	private void altOptimize_topics() {
+
+	}
+	
+	/***
+	 * checking if the gradient computation of likelihood of user topical
+	 * interest X_{u,k} is properly implemented
+	 * 
+	 * @param u
+	 * @param k
+	 */
+	public void gradCheck_TopicalInterest(int u, int k) {
+		double DELTA = 1;
+
+		double[] x = dataset.users[u].topicalInterests;
+
+		double f = getLikelihood_topicalInterest(u, x);
+		double g = gradLikelihood_topicalInterest(u, k, x[k]);
+
+		for (int i = 1; i <= 20; i++) {
+			// reduce DELTA
+			DELTA *= 0.1;
+			x[k] += DELTA;
+			double DELTAF = getLikelihood_topicalInterest(u, x);
+			double numGrad = (DELTAF - f) / DELTA;
+			System.out.printf(String.format("[TopicInterest] u = %d k = %d DELTA = %.12f numGrad = %f grad = %f\n", u,
+					k, DELTA, numGrad, g));
+			// if grad function is implemented properly, we will see numGrad gets closer to grad
+			x[k] -= DELTA;
+		}
+	}
+	
+	/***
+	 * checking if the gradient computation of likelihood of A_{v,k} is properly
+	 * implemented
+	 * 
+	 * @param v
+	 * @param k
+	 */
+	public void gradCheck_Authority(int v, int k) {
+		double DELTA = 1;
+
+		double[] x = dataset.users[v].authorities;
+		double f = getLikelihood_authority(v, x);
+		double g = gradLikelihood_authority(v, k, x[k]);
+
+		for (int i = 1; i <= 20; i++) {
+			// reduce DELTA
+			DELTA *= 0.1;
+			x[k] += DELTA;
+			double DELTAF = getLikelihood_authority(v, x);
+			double numGrad = (DELTAF - f) / DELTA;
+			System.out.printf(String.format("[Authority] v= %d k = %d DELTA = %f numGrad = %f grad = %f\n", v, k, DELTA,
+					numGrad, g));
+			// if grad function is implemented properly, we will see numGrad gets closer to grad
+			x[k] -= DELTA;
+		}
+	}
+
+	/***
+	 * checking if the gradient computation of likelihood of H_{u,k} is properly
+	 * implemented
+	 * 
+	 * @param u
+	 * @param k
+	 */
+	public void gradCheck_Hub(int u, int k) {
+		double DELTA = 1;
+
+		double[] x = dataset.users[u].hubs;
+
+		double f = getLikelihood_hub(u, x);
+		double g = gradLikelihood_hub(u, k, x[k]);
+
+		for (int i = 1; i <= 20; i++) {
+			// reduce DELTA
+			DELTA *= 0.1;
+			x[k] += DELTA;
+			double DELTAF = getLikelihood_hub(u, x);
+			double numGrad = (DELTAF - f) / DELTA;
+			System.out.printf(
+					String.format("[Hub] u = %d k = %d DELTA = %f numGrad = %f grad = %f\n", u, k, DELTA, numGrad, g));
+			// if grad function is implemented properly, we will see numGrad  gets closer to grad
+			x[k] -= DELTA;
+
+		}
+	}
+	
+	/***
+	 * checking if the gradient computation of likelihood of H_{u,k} is properly
+	 * implemented
+	 * 
+	 * @param u
+	 * @param k
+	 */
+	public void gradCheck_PlatformPreference(int u, int k, int p) {
+		double DELTA = 1;
+
+		double[][] x = dataset.users[u].topicalPlatformPreference;
+
+		double f = getLikelihood_hub(u, k, x[p]);
+		double g = gradLikelihood_hub(u, k, p, x[k][p]);
+
+		for (int i = 1; i <= 20; i++) {
+			// reduce DELTA
+			DELTA *= 0.1;
+			x[k] += DELTA;
+			double DELTAF = getLikelihood_hub(u, x);
+			double numGrad = (DELTAF - f) / DELTA;
+			System.out.printf(
+					String.format("[Hub] u = %d k = %d DELTA = %f numGrad = %f grad = %f\n", u, k, DELTA, numGrad, g));
+			// if grad function is implemented properly, we will see numGrad  gets closer to grad
+			x[k] -= DELTA;
+
+		}
 	}
 }
