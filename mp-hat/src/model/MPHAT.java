@@ -746,9 +746,133 @@ public class MPHAT {
 
 		// Set the current user to be v
 		User currUser = dataset.users[u];
-				
+
+		// First term in eqn 30. Compute link likelihood. 
+		if (currUser.followings != null) {
+			for (int i = 0; i < currUser.followings.length; i++) {
+				int v = currUser.followings[i].followingIndex;
+				User following = dataset.users[v];
+				int followingPlatform = currUser.followings[i].platform;
+				//only consider this user if he exist in the platform
+				if (currUser.platforms[p] == 1){
+					//only consider follower relationships in the platform
+					if (followingPlatform == p){
+						// Compute H_u^p * A_v^p
+						double HupAvp = 0;
+						for (int z = 0; z < nTopics; z++) {
+							if (z==k){
+								HupAvp += currUser.hubs[z] * x * following.authorities[z] * following.topicalPlatformPreference[z][p];// now Eta_u,k,p is x
+							} else{
+								HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z] * following.topicalPlatformPreference[z][p];
+							}
+							
+						}
+						HupAvp = HupAvp * lamda;
+						linkLikelihood += ((1/(1-Math.exp(HupAvp))) * 
+										(-Math.exp(-lamda*currUser.hubs[k]*x*following.authorities[k] * following.topicalPlatformPreference[k][p])) *
+										(-lamda*currUser.hubs[k]*following.authorities[k] * following.topicalPlatformPreference[k][p]))-
+										((1/(Math.exp(HupAvp)+1)) *
+										(-Math.exp(-lamda*currUser.hubs[k]*x*following.authorities[k] * following.topicalPlatformPreference[k][p])) *											(-lamda*currUser.hubs[k]*following.authorities[k] * following.topicalPlatformPreference[k][p]));
+					}
+				}
+			}
+		}
+		if (currUser.followers != null) {
+			for (int i = 0; i < currUser.followers.length; i++) {
+				int v = currUser.followers[i].followerIndex;
+				User follower = dataset.users[v];
+				int followerPlatform = currUser.followers[i].platform;
+				//only consider this user if he exist in the platform
+				if (currUser.platforms[p] == 1){
+					//only consider follower relationships in the platform
+					if (followerPlatform == p){
+						// Compute H_u^p * A_v^p
+						double HupAvp = 0;
+						for (int z = 0; z < nTopics; z++) {
+							if (z==k){
+								HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z] * x;// now Eta_u,k is x
+							} else{
+								HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+							}
+						}
+						HupAvp = HupAvp * lamda;
+						linkLikelihood += ((1/(1-Math.exp(HupAvp))) * 
+								(-Math.exp(-lamda*follower.hubs[k]*follower.topicalPlatformPreference[k][p]*currUser.authorities[k]*x)) *
+								(-lamda*follower.hubs[k]*follower.topicalPlatformPreference[k][p]*currUser.authorities[k]))-
+								((1/(Math.exp(HupAvp)+1)) *
+								(-Math.exp(-lamda*follower.hubs[k]*follower.topicalPlatformPreference[k][p]*currUser.authorities[k]*x)) *
+								(-lamda*follower.hubs[k]*follower.topicalPlatformPreference[k][p]*currUser.authorities[k]));
+					}
+				}				
+			}
+		}
 		
-		return 0;
+		// Second term in eqn 30. Compute non link likelihood. 
+		if (currUser.nonFollowings != null) {
+			for (int i = 0; i < currUser.nonFollowings.length; i++) {
+				int v = currUser.nonFollowings[i].followingIndex;
+				User nonFollowing = dataset.users[v];
+				int nonFollowingPlatform = currUser.nonFollowings[i].platform;
+				//only consider this user if he exist in the platform
+				if (currUser.platforms[p] == 1){
+					//only consider follower relationships in the platform
+					if (nonFollowingPlatform == p){
+						// Compute H_u^p * A_v^p
+						double HupAvp = 0;
+						for (int z = 0; z < nTopics; z++) {
+							if (z==k){
+								HupAvp += currUser.hubs[z] * x * nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];// now Eta_u,k is x
+							} else{
+								HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];
+							}
+						}
+						HupAvp = HupAvp * lamda;
+						nonLinkLikelihood += (-lamda*currUser.hubs[k]*nonFollowing.authorities[k]*nonFollowing.topicalPlatformPreference[k][p]) -
+											((1/Math.exp(HupAvp)) *
+											(-lamda*currUser.hubs[k]*x*nonFollowing.authorities[k]*nonFollowing.topicalPlatformPreference[k][p]) *
+											(-lamda*currUser.hubs[k]*nonFollowing.authorities[k]*nonFollowing.topicalPlatformPreference[k][p]));
+					}
+				}			
+			}
+		}
+		if (currUser.nonFollowers != null) {
+			for (int i = 0; i < currUser.nonFollowers.length; i++) {
+				int v = currUser.nonFollowers[i].followerIndex;
+				User nonFollower = dataset.users[v];
+				int nonFollowerPlatform = currUser.nonFollowers[i].platform;
+		
+				//only consider this user if he exist in the platform
+				if (currUser.platforms[p] == 1){
+					//only consider follower relationships in the platform
+					if (nonFollowerPlatform == p){
+						// Compute H_u^p * A_v^p
+						double HupAvp = 0;
+						for (int z = 0; z < nTopics; z++) {
+							if (z==k){
+								HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * currUser.authorities[z] * x;// now Eta_u,k is x
+							} else {
+								HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+							}
+						}
+						HupAvp = HupAvp * lamda;
+						nonLinkLikelihood += (-lamda*nonFollower.hubs[k]*nonFollower.topicalPlatformPreference[k][p]*currUser.authorities[k]) -
+										((1/Math.exp(HupAvp)) *
+										(-lamda*nonFollower.hubs[k]*nonFollower.topicalPlatformPreference[k][p]*currUser.authorities[k]*x) *
+										(-lamda*nonFollower.hubs[k]*nonFollower.topicalPlatformPreference[k][p]*currUser.authorities[k]));
+					}
+				}			
+			}
+		}
+		
+		// Third term in eqn 28. Compute post likelihood. 
+		
+		
+		// Fourth term in eqn 28. Compute platform likelihood.
+		platformLikelihood += ((alpha-1)/x) - (1/theta); 
+		
+		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		
+		return likelihood;
 
 	}
 
@@ -893,10 +1017,13 @@ public class MPHAT {
 	public void gradCheck_PlatformPreference(int u, int k, int p) {
 		double DELTA = 1;
 
-		double[][] x = dataset.users[u].topicalPlatformPreference;
-
-		double f = getLikelihood_hub(u, k, x[p]);
-		double g = gradLikelihood_hub(u, k, p, x[k][p]);
+		double[] x = new double[p];
+		for (int i = 0; i < dataset.users[u].topicalPlatformPreference[k].length; i++) {
+			x[i] = dataset.users[u].topicalPlatformPreference[k][i];
+		}
+		
+		double f = getLikelihood_platformPreference(u, k, x);
+		double g = gradLikelihood_platformPreference(u, k, p, x[p]);
 
 		for (int i = 1; i <= 20; i++) {
 			// reduce DELTA
