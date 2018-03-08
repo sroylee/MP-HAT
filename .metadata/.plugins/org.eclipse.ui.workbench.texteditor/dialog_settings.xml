@@ -2,12 +2,15 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="getLikelihood_hub" key="selection"/>
+		<item value="alpha" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="alpha"/>
+			<item value="kappa"/>
+			<item value="topicWordDist"/>
 			<item value="getLikelihood_hub"/>
 		</list>
 		<list key="replacehistory">

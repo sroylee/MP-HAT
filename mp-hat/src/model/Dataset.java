@@ -16,8 +16,8 @@ import tool.KeyValuePair;
 public class Dataset {
 	public String path;
 	public int nUsers;
-	public int[] nPlatformUsers;
-	public int nPlatforms;
+	public int nPlatforms = Configure.NUM_OF_PLATFORM;
+	public int[] nPlatformUsers = new int[nPlatforms];
 	public User[] users;
 	public int nLinks = 0;
 	public int nNonLinks = 0;
@@ -78,6 +78,8 @@ public class Dataset {
 
 			// Declare the number of users in users array
 			users = new User[nUsers];
+			
+			
 
 			// Read and load user into Users array
 			br = new BufferedReader(new FileReader(userFile.getAbsolutePath()));
@@ -95,6 +97,7 @@ public class Dataset {
 					userId2Index.put(userId, u);
 					userIndex2Id.put(u, userId);
 					//Check the user has account with which platform (each column represent a platform. 1 represent present, 0 otherwise
+					users[u].platforms = new int[nPlatforms];
 					for (int p=0; p<Configure.NUM_OF_PLATFORM;p++){
 						int flag = sc.nextInt();
 						nPlatformUsers[p] += flag;
@@ -137,6 +140,7 @@ public class Dataset {
 			for (int u = 0; u < nUsers; u++) {
 				users[u].posts = new Post[users[u].nPosts];
 				users[u].postBatches = new int[users[u].nPosts];
+				users[u].nPlatformPosts = new int[nPlatforms];
 				users[u].nPosts = 0;
 			}
 
@@ -147,12 +151,12 @@ public class Dataset {
 				String postId = tokens[0];
 				String userId = tokens[1];
 				int platform = Integer.parseInt(tokens[2]);
-				int batch = Integer.parseInt(tokens[3]);
+				int batch = Integer.parseInt(tokens[4]);
 				int u = userId2Index.get(userId);
 				users[u].postBatches[users[u].nPosts] = batch;
 				users[u].posts[users[u].nPosts] = new Post();
 				users[u].posts[users[u].nPosts].postId = postId;
-				tokens = tokens[2].trim().split(" ");
+				tokens = tokens[3].trim().split(" ");
 				users[u].posts[users[u].nPosts].nWords = tokens.length;
 				users[u].posts[users[u].nPosts].words = new int[tokens.length];
 				for (int i = 0; i < tokens.length; i++) {
@@ -231,6 +235,8 @@ public class Dataset {
 
 			// initalize the users' follower and following arrays
 			for (int u = 0; u < nUsers; u++) {
+				users[u].nPlatformFollowers = new int[nPlatforms];
+				users[u].nPlatformFollowings = new int[nPlatforms];
 				if (users[u].nFollowers > 0) {
 					users[u].followers = new Follower[users[u].nFollowers];
 					users[u].followerBatches = new int[users[u].nFollowers];
@@ -254,13 +260,14 @@ public class Dataset {
 
 				int src_user_index = userId2Index.get(src_user);
 				int des_user_index = userId2Index.get(des_user);
+				users[des_user_index].followers[users[des_user_index].nFollowers] = new Follower();
 				users[des_user_index].followers[users[des_user_index].nFollowers].followerIndex = src_user_index;
 				users[des_user_index].followers[users[des_user_index].nFollowers].platform = platform;
 				users[des_user_index].followerBatches[users[des_user_index].nFollowers] = batch;
 				users[des_user_index].nFollowers++;
 				users[des_user_index].nPlatformFollowers[platform]++;
 				
-
+				users[src_user_index].followings[users[src_user_index].nFollowings] = new Following();
 				users[src_user_index].followings[users[src_user_index].nFollowings].followingIndex = des_user_index;
 				users[src_user_index].followings[users[src_user_index].nFollowings].platform = platform;
 				users[src_user_index].followingBatches[users[src_user_index].nFollowings] = batch;
@@ -476,7 +483,9 @@ public class Dataset {
 				users[u].nNonFollowings = 0;
 				users[u].nonFollowings = new Following[nonfollwings.size()];
 				users[u].nonFollowingBatches = new int[nonfollwings.size()];
+				users[u].nPlatformNonFollowings = new int[nPlatforms];
 				for (int v : nonfollwings) {
+					users[u].nonFollowings[users[u].nNonFollowings] = new Following();
 					users[u].nonFollowings[users[u].nNonFollowings].followingIndex = v;
 					users[u].nonFollowings[users[u].nNonFollowings].platform = platform;
 					users[u].nonFollowingBatches[users[u].nNonFollowings] = 1;
@@ -495,7 +504,9 @@ public class Dataset {
 			}
 			users[v].nonFollowers = new Follower[nonFollowers.size()];
 			users[v].nNonFollowers = 0;
+			users[v].nPlatformNonFollowers = new int[nPlatforms];
 			for (int u : nonFollowers) {
+				users[v].nonFollowers[users[v].nNonFollowers] = new Follower();
 				users[v].nonFollowers[users[v].nNonFollowers].followerIndex = u;
 				users[v].nonFollowers[users[v].nNonFollowers].platform = platform;
 				users[v].nPlatformNonFollowers[platform]++;

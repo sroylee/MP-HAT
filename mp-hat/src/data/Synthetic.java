@@ -395,6 +395,7 @@ public class Synthetic {
 
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
-		generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output");
+		//generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output");
+		generator.genData(1000, 2, 10, 1000, "E:/users/roylee.2013/Chardonnay/synthetic");
 	}
 }
