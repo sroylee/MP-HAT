@@ -103,8 +103,8 @@ public class Dataset {
 						nPlatformUsers[p] += flag;
 						users[u].platforms[p] = flag;
 					}
-					u++;
 				}
+				u++;
 			}
 			br.close();
 		} catch (Exception e) {

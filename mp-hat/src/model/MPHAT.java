@@ -139,7 +139,7 @@ public class MPHAT {
 			if (currUser.postBatches[i] == batch) {
 				// Third term in eqn 16
 				int postTopic = currUser.posts[i].topic;
-				postLikelihood += Math.exp(x[postTopic]) / denominator;
+				postLikelihood += Math.log(Math.exp(x[postTopic]) / denominator);
 
 			}
 		}
@@ -1496,12 +1496,12 @@ public class MPHAT {
 	 */
 	private void init() {
 		//alpha = (double) (20) / (double) (nTopics);// prior for users' interest
-		gamma = 0.001;
-		sigma = 0.2;// variance of users' authorities
-		delta = 0.2;// variance of users' hubs
-		kappa = 2.0;// gamma prior
-		alpha = 2.0;// gamma prior
-		theta = 2.0;// gamma prior		
+		gamma = 0.001;// prior for word distribution
+		sigma = 2.0;// shape parameter of users' authorities
+		delta = 2.0;// shapa parameter of users' hubs
+		kappa = 2.0;// shape parameter of user interest latent vector
+		alpha = 2.0;// shape parameter of user platform preference vector
+		theta = 2.0;// scale parameter of user interests/platform preference vectors		
 		rand = new Random();
 		
 		// initialize the count variables
@@ -1539,6 +1539,7 @@ public class MPHAT {
 			currUser.topicalInterests = new double[nTopics];
 			currUser.topicalPlatformPreference = new double[nTopics][Configure.NUM_OF_PLATFORM];
 			for (int k = 0; k < nTopics; k++) {
+				
 				GammaDistribution g = new GammaDistribution(kappa,theta);
 				currUser.topicalInterests[k] = g.sample();
 				
@@ -1583,7 +1584,8 @@ public class MPHAT {
 	}
 	
 	public static void main(String[] args) {
-		String datasetPath = "E:/users/roylee.2013/Chardonnay/synthetic/data/"; 
+		//String datasetPath = "E:/users/roylee.2013/Chardonnay/synthetic/data/";
+		String datasetPath = "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		int nTopics= 10; 
 		int batch = 1;
 		  
@@ -1600,8 +1602,7 @@ public class MPHAT {
 		// model.train(); 
 		// model.gradCheck_Authority(u, k); 
 		// model.gradCheck_Hub(u, k); 
-		 model.gradCheck_TopicalInterest(u, k);
-		 
+		 model.gradCheck_TopicalInterest(u, k);	 
 	}
 
 }

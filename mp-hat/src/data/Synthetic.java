@@ -103,7 +103,6 @@ public class Synthetic {
 					userPlatformPreference[u][z][p] = Math.log(norm * userPlatformPreference[u][z][p]);
 				}
 			}
-
 		}
 		return userPlatformPreference;
 	}
