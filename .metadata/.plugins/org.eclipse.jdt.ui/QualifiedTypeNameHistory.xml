@@ -2,7 +2,7 @@
 <qualifiedTypeNameHistroy>
 <fullyQualifiedTypeName name="model.Configure"/>
 <fullyQualifiedTypeName name="model.MPHAT"/>
-<fullyQualifiedTypeName name="java.lang.Math"/>
 <fullyQualifiedTypeName name="tool.MathTool"/>
 <fullyQualifiedTypeName name="org.apache.commons.math3.distribution.GammaDistribution"/>
+<fullyQualifiedTypeName name="java.lang.Math"/>
 </qualifiedTypeNameHistroy>
