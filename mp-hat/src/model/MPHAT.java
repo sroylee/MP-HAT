@@ -17,7 +17,6 @@ public class MPHAT {
 	public int batch;
 
 	// priors
-
 	public double alpha;// prior for users' platform preferences
 	public double kappa;// prior for user's topic interests
 	public double theta;
@@ -1274,9 +1273,9 @@ public class MPHAT {
 	 * 
 	 * @param u
 	 */
-	private void altOptimize_PlatformPreference(int u) {
+	private void altOptimize_PlatformPreference(int u, int k) {
 		// the topical platform preferences is a 2D array
-		for (int k = 0; k < nTopics; k++) {
+		
 			double[] grad = new double[Configure.NUM_OF_PLATFORM];
 			double[] currentX = new double[Configure.NUM_OF_PLATFORM];
 			double[] x = new double[Configure.NUM_OF_PLATFORM];
@@ -1339,7 +1338,6 @@ public class MPHAT {
 					break;// cannot improve further
 				}
 			}
-		}
 	}
 	
 
@@ -1680,6 +1678,200 @@ public class MPHAT {
 
 	}
 
+	/***
+	 * modeling learning
+	 */
+	public void train() {
+		init();
+		double maxLikelihood = 0;
+		double currentLikelihood = 0;
+		System.out.println("Datapath:" + this.datapath);
+		System.out.println("Alpha:" + this.alpha);
+		System.out.println("Line Search Alpha:" + this.lineSearch_alpha);
+		System.out.println("Line Search Beta:" + this.lineSearch_beta);
+		System.out.println("Line Search Max Iterations:" + this.lineSearch_MaxIterations);
+		System.out.println("#Topics:" + this.nTopics);
+		System.out.println("#platforms:" + Configure.NUM_OF_PLATFORM);
+		for (int iter = 0; iter < max_GibbsEM_Iterations; iter++) {
+			// EM part that employs alternating optimization
+			for (int u = 0; u < dataset.nUsers; u++) {
+				altOptimize_topicalInterest(u);
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				for (int k = 0; k < nTopics; k++) {
+					altOptimize_PlatformPreference(u,k);
+				}
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				altOptimize_Authorities(u);
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				altOptimize_Hubs(u);
+			}
+			
+			altOptimize_topics();
+			// Gibbs part
+			for (int u = 0; u < dataset.nUsers; u++) {
+				for (int n = 0; n < dataset.users[u].nPosts; n++) {
+					// only consider posts in batch
+					if (dataset.users[u].postBatches[n] == batch) {
+						samplePostTopic_EMGibbs(u, n);
+					}
+				}
+			}
+			// set first Likelihood as the maxLikelihood
+			currentLikelihood = getLikelihood();
+			if (iter == 0) {
+				maxLikelihood = currentLikelihood;
+			} else {
+				if (maxLikelihood < currentLikelihood) {
+					maxLikelihood = currentLikelihood;
+					// set optimized topicWordDist to be the current
+					// TopicWordsDist
+					optTopicWordDist = topicWordDist;
+					// set optimized user topical interest, authority and hub
+					for (int u = 0; u < dataset.nUsers; u++) {
+						User currUser = dataset.users[u];
+						currUser.optTopicalInterests = currUser.topicalInterests;
+						currUser.optAuthorities = currUser.authorities;
+						currUser.optHubs = currUser.hubs;
+						currUser.optTopicalPlatformPreference = currUser.topicalPlatformPreference;
+					}
+				}
+			}
+			System.out.printf("likelihood after %d steps: %f, max %f ", iter, currentLikelihood, maxLikelihood);
+			System.out.println();
+		}
+		// print out the learned parameters
+		output_topicWord();
+		output_topicInterest();
+		output_platformPreference();
+		output_authority();
+		output_hub();
+		outputPostTopicTopWords(20);
+	}
+	
+	public void output_topicWord() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_topicalWordDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int k = 0; k < nTopics; k++) {
+				String text = Integer.toString(k);
+				for (int w = 0; w < dataset.vocabulary.length; w++) {
+					text = text + "," + Double.toString(optTopicWordDist[k][w]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to topical word file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	private void outputPostTopicTopWords(int k) {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_topTopicWords.csv");
+			BufferedWriter bw = new BufferedWriter(new FileWriter(f.getAbsoluteFile()));
+			RankingTool rankTool = new RankingTool();
+			WeightedElement[] topWords = null;
+			for (int z = 0; z < nTopics; z++) {
+				bw.write(z + "\n");
+				topWords = rankTool.getTopKbyWeight(dataset.vocabulary, optTopicWordDist[z], k);
+				for (int j = 0; j < k; j++)
+					bw.write("," + topWords[j].name + "," + topWords[j].weight + "\n");
+			}
+			bw.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing out post topic top words to file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_topicInterest() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userTopicalInterestDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					text = text + "," + Double.toString(currUser.optTopicalInterests[k]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to topical interest file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_platformPreference() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userTopicalPlatformPreferenceDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					for (int p=0; p<Configure.NUM_OF_PLATFORM; p++){
+						text = text + "," + p + "," + k + "," + Double.toString(currUser.optTopicalPlatformPreference[k][p]);
+					}
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to platform preference file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_authority() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userAuthorityDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					text = text + "," + Double.toString(currUser.optAuthorities[k]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to authority file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_hub() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userHubDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					text = text + "," + Double.toString(currUser.optHubs[k]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to topical interest file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
 	public static void main(String[] args) {
 		//String datasetPath = "E:/users/roylee.2013/Chardonnay/synthetic/data/";
 		 String datasetPath = "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";

@@ -8,13 +8,14 @@ public class Configure {
 	}
 
 	public static enum PredictionMode {
-		CTLR, // Using u's hub and v's authority
+		HAT, // Using u's hub and v's authority
 		CTR, // Collaborative topic regression model
 		WTFW, // KDD2014,Who to follow and Why
 		COMMON_INTEREST, // Using u and v topical interests
 		COMMON_NEIGHBOR, // Using Jaccard Coefficient of u and v common
 							// neighborhood
 		HITS,
+		HATS, //our new model
 	}
 
 	public final static int NUM_OF_PLATFORM = 2;
