@@ -241,11 +241,13 @@ public class Dataset {
 					users[u].followers = new Follower[users[u].nFollowers];
 					users[u].followerBatches = new int[users[u].nFollowers];
 					users[u].nFollowers = 0;
+					users[u].nNonFollowers = 0;
 				}
 				if (users[u].nFollowings > 0) {
 					users[u].followings = new Following[users[u].nFollowings];
 					users[u].followingBatches = new int[users[u].nFollowings];
 					users[u].nFollowings = 0;
+					users[u].nNonFollowings = 0;
 				}
 			}
 			
@@ -480,16 +482,25 @@ public class Dataset {
 				}
 
 				// add into user's non-followee list
-				users[u].nNonFollowings = 0;
-				users[u].nonFollowings = new Following[nonfollwings.size()];
-				users[u].nonFollowingBatches = new int[nonfollwings.size()];
-				users[u].nPlatformNonFollowings = new int[nPlatforms];
+				if (users[u].nNonFollowings == 0){
+					users[u].nonFollowings = new Following[nonfollwings.size()];
+					users[u].nonFollowingBatches = new int[nonfollwings.size()];
+				}  else {
+					//Expanding array
+					Following[] tempNonFollowings = new Following[users[u].nNonFollowings+nonfollwings.size()];
+					int[] tempNonFollowingBatches = new int[users[u].nNonFollowings+nonfollwings.size()];
+					System.arraycopy(users[u].nonFollowings, 0, tempNonFollowings, 0, users[u].nonFollowings.length);
+					System.arraycopy(users[u].nonFollowingBatches, 0, tempNonFollowingBatches, 0, users[u].nonFollowingBatches.length);
+					users[u].nonFollowings = new Following[users[u].nNonFollowings+nonfollwings.size()];
+					users[u].nonFollowingBatches = new int[users[u].nNonFollowings+nonfollwings.size()];
+					System.arraycopy(tempNonFollowings, 0, users[u].nonFollowings, 0, tempNonFollowings.length);
+					System.arraycopy(tempNonFollowingBatches, 0, users[u].nonFollowingBatches, 0, tempNonFollowingBatches.length);	
+				}
 				for (int v : nonfollwings) {
 					users[u].nonFollowings[users[u].nNonFollowings] = new Following();
 					users[u].nonFollowings[users[u].nNonFollowings].followingIndex = v;
 					users[u].nonFollowings[users[u].nNonFollowings].platform = platform;
 					users[u].nonFollowingBatches[users[u].nNonFollowings] = 1;
-					users[u].nPlatformNonFollowings[platform]++;
 					users[u].nNonFollowings++;
 					nNonLinks++;
 				}
@@ -502,20 +513,28 @@ public class Dataset {
 			if (nonFollowers == null) {
 				continue;
 			}
-			users[v].nonFollowers = new Follower[nonFollowers.size()];
-			users[v].nNonFollowers = 0;
-			users[v].nPlatformNonFollowers = new int[nPlatforms];
+			
+			if (users[v].nNonFollowers  == 0){
+				users[v].nonFollowers = new Follower[nonFollowers.size()];
+			}  else {
+				//Expanding array
+				Follower[] tempNonFollowers = new Follower[users[v].nNonFollowers+nonFollowers.size()];
+				System.arraycopy(users[v].nonFollowers, 0, tempNonFollowers, 0, users[v].nonFollowers.length);
+				users[v].nonFollowers = new Follower[users[v].nNonFollowers+nonFollowers.size()];
+				System.arraycopy(tempNonFollowers, 0, users[v].nonFollowers, 0, tempNonFollowers.length);	
+			}
 			for (int u : nonFollowers) {
 				users[v].nonFollowers[users[v].nNonFollowers] = new Follower();
 				users[v].nonFollowers[users[v].nNonFollowers].followerIndex = u;
 				users[v].nonFollowers[users[v].nNonFollowers].platform = platform;
-				users[v].nPlatformNonFollowers[platform]++;
 				users[v].nNonFollowers++;
 			}
 			//System.out.println(users[v].userId + " " + users[v].nonFollowers.length);
 		}
 
 	}
+	
+	
 
 	public static void main(String[] args) {
 		KeyValuePair[] x = new KeyValuePair[10];

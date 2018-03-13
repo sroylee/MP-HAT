@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <qualifiedTypeNameHistroy>
-<fullyQualifiedTypeName name="model.Configure"/>
 <fullyQualifiedTypeName name="model.MPHAT"/>
 <fullyQualifiedTypeName name="tool.MathTool"/>
 <fullyQualifiedTypeName name="org.apache.commons.math3.distribution.GammaDistribution"/>
 <fullyQualifiedTypeName name="java.lang.Math"/>
+<fullyQualifiedTypeName name="model.Configure"/>
 </qualifiedTypeNameHistroy>
