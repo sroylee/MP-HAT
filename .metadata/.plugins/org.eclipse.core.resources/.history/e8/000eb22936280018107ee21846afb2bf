@@ -17,7 +17,6 @@ public class MPHAT {
 	public int batch;
 
 	// priors
-
 	public double alpha;// prior for users' platform preferences
 	public double kappa;// prior for user's topic interests
 	public double theta;
@@ -94,8 +93,201 @@ public class MPHAT {
 		// L(link)
 		// value can be more than 1
 		// sum of eqn 1 -10
-		return 0;
+		double linkLikelihood = 0;
+		double linkRelationshipLikelihood = 0;
+		double linkAuthorityLikelihood = 0;
+		double linkHubLikelihood = 0;
+		double linkPlatformLikelihood = 0;
+		double postLikelihood = 0;
+		double postWordLikelihood = 0;
+		double postTopicLikelihood = 0;
+		double postPlatformLikelihood = 0;
+		double postXLikelihood = 0;
+		double postTauLikelihood = 0;
+		double postEtaLikelihood = 0;
 
+		for (int u = 0; u < dataset.nUsers; u++) {
+			User currUser = dataset.users[u];
+			
+			if (currUser.followings != null) {
+				for (int i = 0; i < currUser.followings.length; i++) {
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						int v = currUser.followings[i].followingIndex;
+						User following = dataset.users[v];
+						int followingPlatform = currUser.followings[i].platform;
+
+						// only consider this user if he exist in the platform
+						if (currUser.platforms[p] == 1) {
+							// only consider follower relationships in the platform
+							if (followingPlatform == p) {
+								// Compute H_u^p * A_v^p
+								double HupAvp = 0;
+								for (int z = 0; z < nTopics; z++) {
+									HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
+											* following.authorities[z] * following.topicalPlatformPreference[z][p];
+								}
+								HupAvp = HupAvp * lamda;
+								linkRelationshipLikelihood += Math.log(1-Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp)+1);
+							}
+						}
+					}
+				}
+			}
+			if (currUser.followers != null) {
+				for (int i = 0; i < currUser.followers.length; i++) {
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						int v = currUser.followers[i].followerIndex;
+						User follower = dataset.users[v];
+						int followerPlatform = currUser.followers[i].platform;
+
+						// only consider this user if he exist in the platform
+						if (currUser.platforms[p] == 1) {
+							// only consider follower relationships in the platform
+							if (followerPlatform == p) {
+								// Compute H_u^p * A_v^p
+								double HupAvp = 0;
+								for (int z = 0; z < nTopics; z++) {
+									HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p]
+											* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+									
+								}
+								HupAvp = HupAvp * lamda;
+								linkRelationshipLikelihood += Math.log(1-Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp)+1);
+							}
+						}
+					}
+				}
+			}
+			if (currUser.nonFollowings != null) {
+				for (int i = 0; i < currUser.nonFollowings.length; i++) {
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						int v = currUser.nonFollowings[i].followingIndex;
+						User nonFollowing = dataset.users[v];
+						int nonFollowingPlatform = currUser.nonFollowings[i].platform;
+
+						// only consider this user if he exist in the platform
+						if (currUser.platforms[p] == 1) {
+							// only consider follower relationships in the platform
+							if (nonFollowingPlatform == p) {
+								// Compute H_u^p * A_v^p
+								double HupAvp = 0;
+								for (int z = 0; z < nTopics; z++) {
+									HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
+											* nonFollowing.authorities[z]* nonFollowing.topicalPlatformPreference[z][p];
+									
+								}
+								HupAvp = HupAvp * lamda;
+								linkRelationshipLikelihood +=Math.log(2) - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+							}
+						}
+					}
+				}
+			}
+			if (currUser.nonFollowers != null) {
+				for (int i = 0; i < currUser.nonFollowers.length; i++) {
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						int v = currUser.nonFollowers[i].followerIndex;
+						User nonFollower = dataset.users[v];
+						int nonFollowerPlatform = currUser.nonFollowers[i].platform;
+
+						// only consider this user if he exist in the platform
+						if (currUser.platforms[p] == 1) {
+							// only consider follower relationships in the platform
+							if (nonFollowerPlatform == p) {
+								// Compute H_u^p * A_v^p
+								double HupAvp = 0;
+								for (int z = 0; z < nTopics; z++) {
+									HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
+											* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+									
+								}
+								HupAvp = HupAvp * lamda;
+								linkRelationshipLikelihood +=Math.log(2) - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+							}
+						}
+					}
+				}
+			}
+
+			
+			for (int k = 0; k < nTopics; k++) {
+				linkAuthorityLikelihood += ((sigma-1)*Math.log(currUser.authorities[k])) 
+											- ((currUser.authorities[k]*sigma)/currUser.topicalInterests[k])
+											- (sigma * Math.log(currUser.topicalInterests[k]));
+				if (Double.isInfinite(linkAuthorityLikelihood)) {
+					System.out.printf("[authority] A[%d] = %.12f\n", k, currUser.authorities[k]);
+				}
+				linkHubLikelihood += ((delta-1) * Math.log(currUser.hubs[k])) 
+									- ((currUser.hubs[k]*delta)/currUser.topicalInterests[k])
+									- (delta * Math.log(currUser.topicalInterests[k]));
+				if (Double.isInfinite(linkHubLikelihood)) {
+					System.out.printf("[hub] H[%d] = %.12f\n", k, currUser.hubs[k]);
+				}
+				for (int p=0; p < Configure.NUM_OF_PLATFORM; p++){
+					linkPlatformLikelihood += (alpha-1) * Math.log(currUser.topicalPlatformPreference[k][p])
+											- (currUser.topicalPlatformPreference[k][p]/theta);
+					if (Double.isInfinite(linkPlatformLikelihood)) {
+						System.out.printf("[platform] P[%d] = %.12f\n", k, currUser.topicalPlatformPreference[k][p]);
+					}
+				}
+			}
+
+			linkLikelihood += linkRelationshipLikelihood + linkAuthorityLikelihood + linkHubLikelihood + postPlatformLikelihood;
+
+			for (int s = 0; s < currUser.nPosts; s++) {
+				if (currUser.postBatches[s] == batch) {
+					Post currPost = currUser.posts[s];
+					for (int w = 0; w < currPost.words.length; w++) {
+						int word = currPost.words[w];
+						postWordLikelihood += Math.log(topicWordDist[currPost.topic][word]);
+					}
+					double denominator = 0;
+					for (int p=0; p < Configure.NUM_OF_PLATFORM; p++){
+						denominator += Math.exp(currUser.topicalPlatformPreference[currPost.topic][p]);
+					}
+					postPlatformLikelihood += Math.log(Math.exp(currUser.topicalPlatformPreference[currPost.topic][currPost.platform])/denominator);
+					if (Double.isInfinite(postPlatformLikelihood)) {
+						System.out.printf("[Post] platform[%d] = %.12f\n", currPost.platform,
+								currUser.topicalPlatformPreference[currPost.topic][currPost.platform]);
+					}
+					denominator = 0;
+					for (int k=0; k < nTopics; k++){
+						denominator += Math.exp(currUser.topicalInterests[currPost.topic]);
+					}
+					postTopicLikelihood += Math.log(Math.exp(currUser.topicalInterests[currPost.topic])/denominator);
+					if (Double.isInfinite(postTopicLikelihood)) {
+						System.out.printf("[Post] topic[%d] = %.12f\n", currPost.topic,
+								currUser.topicalInterests[currPost.topic]);
+					}
+				}
+			}
+
+			for (int k = 0; k < nTopics; k++) {
+				postXLikelihood += ((kappa-1)*Math.log(currUser.topicalInterests[k])) - (currUser.topicalInterests[k]/theta) ;
+				for (int p=0; p < Configure.NUM_OF_PLATFORM; p++){
+					postEtaLikelihood += (alpha-1) * Math.log(currUser.topicalPlatformPreference[k][p])
+											- (currUser.topicalPlatformPreference[k][p]/theta);
+					if (Double.isInfinite(postEtaLikelihood)) {
+						System.out.printf("[Eta] Eta[%d] = %.12f\n", k, currUser.topicalPlatformPreference[k][p]);
+					}
+				}
+			}
+		}
+
+		for (int k = 0; k < nTopics; k++) {
+			for (int w = 0; w < dataset.vocabulary.length; w++) {
+				postTauLikelihood += (gamma - 1) * Math.log(topicWordDist[k][w]);
+			}
+		}
+
+		
+		postLikelihood = postWordLikelihood + postPlatformLikelihood+ postTopicLikelihood + postXLikelihood + postEtaLikelihood + postTauLikelihood;
+
+		if (Double.isInfinite(linkLikelihood) || Double.isInfinite(postLikelihood)) {
+			System.exit(-1);
+		}
+
+		return (linkLikelihood + postLikelihood);
 	}
 
 	/***
@@ -147,10 +339,6 @@ public class MPHAT {
 		}
 		finalLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + topicLikelihood;
 
-		// System.out.println("G-authorityLikelihood:"+authorityLikelihood);
-		// System.out.println("G-hubLikelihood:"+hubLikelihood);
-		// System.out.println("G-postLikelihood:"+postLikelihood);
-		// System.out.println("G-topicLikelihood:"+topicLikelihood);
 		return finalLikelihood;
 	}
 
@@ -215,10 +403,6 @@ public class MPHAT {
 
 		gradLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + topicLikelihood;
 
-		// System.out.println("authorityLikelihood:"+authorityLikelihood);
-		// System.out.println("hubLikelihood:"+hubLikelihood);
-		// System.out.println("postLikelihood:"+postLikelihood);
-		// System.out.println("topicLikelihood:"+topicLikelihood);
 		return gradLikelihood;
 
 	}
@@ -330,10 +514,10 @@ public class MPHAT {
 							// x
 						}
 						HupAvp = HupAvp * lamda;
-						double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-						followerLikelihood += Math.log(fHupAvp);
-						// System.out.println("G-fHupAvp:"+fHupAvp);
-
+						//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+						//followerLikelihood += Math.log(fHupAvp);
+						followerLikelihood += Math.log(1-Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp)+1);
+						
 					}
 				}
 			}
@@ -360,8 +544,9 @@ public class MPHAT {
 							// x
 						}
 						HupAvp = HupAvp * lamda;
-						double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-						nonFollowerLikelihood += Math.log(1 - fHupAvp);
+						//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+						//nonFollowerLikelihood += Math.log(1 - fHupAvp);
+						nonFollowerLikelihood +=Math.log(2) - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
 					}
 				}
 			}
@@ -422,16 +607,6 @@ public class MPHAT {
 						}
 						HupAvp = HupAvp * lamda;
 
-						// followerLikelihood += (1/(1-Math.exp(-HupAvp)) *
-						// -Math.exp(-lamda*follower.hubs[k]*follower.topicalPlatformPreference[k][p]*x*currUser.topicalPlatformPreference[k][p])
-						// *
-						// -lamda*follower.topicalPlatformPreference[k][p]*follower.hubs[k]*currUser.topicalPlatformPreference[k][p])
-						// -
-						// (1/(Math.exp(-HupAvp)+1) *
-						// Math.exp(-lamda*follower.hubs[k]*follower.topicalPlatformPreference[k][p]*x*currUser.topicalPlatformPreference[k][p])
-						// *
-						// -lamda*follower.topicalPlatformPreference[k][p]*follower.hubs[k]*currUser.topicalPlatformPreference[k][p]);
-
 						followerLikelihood += (1 / (1 - Math.exp(-HupAvp)) * -Math.exp(-HupAvp) * -lamda
 								* follower.topicalPlatformPreference[k][p] * follower.hubs[k]
 										* currUser.topicalPlatformPreference[k][p])
@@ -465,18 +640,6 @@ public class MPHAT {
 							}
 						}
 						HupAvp = HupAvp * lamda;
-
-						// nonFollowerLikelihood += (-lamda *
-						// currUser.topicalPlatformPreference[k][p] *
-						// nonFollower.hubs[k] *
-						// nonFollower.topicalPlatformPreference[k][p])
-						// - ((1 / (Math.exp(-HupAvp) + 1))
-						// * (Math.exp(-lamda * nonFollower.hubs[k]
-						// * nonFollower.topicalPlatformPreference[k][p] * x
-						// * currUser.topicalPlatformPreference[k][p]))
-						// * (-lamda * nonFollower.hubs[k] *
-						// nonFollower.topicalPlatformPreference[k][p]
-						// * currUser.topicalPlatformPreference[k][p]));
 
 						nonFollowerLikelihood += (-lamda * currUser.topicalPlatformPreference[k][p]
 								* nonFollower.hubs[k] * nonFollower.topicalPlatformPreference[k][p])
@@ -603,9 +766,10 @@ public class MPHAT {
 								// x
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-							followingLikelihood += Math.log(fHupAvp);
-						
+							//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							//followingLikelihood += Math.log(fHupAvp);
+							followingLikelihood += Math.log(1-Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp)+1);
+							
 					}
 				}
 			}
@@ -617,7 +781,6 @@ public class MPHAT {
 					int v = currUser.nonFollowings[i].followingIndex;
 					User nonFollowing = dataset.users[v];
 					int nonFollowingPlatform = currUser.nonFollowings[i].platform;
-
 					// only consider this user if he exist in the platform and nonfollowing relationships in the platform
 					if (currUser.platforms[p] == 1 && nonFollowingPlatform == p) {
 						// Compute H_u * A_v
@@ -630,13 +793,17 @@ public class MPHAT {
 								// x
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-							nonFollowingLikelihood += Math.log(1 - fHupAvp);
+							//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							//nonFollowingLikelihood += Math.log(1 - fHupAvp);
+							nonFollowingLikelihood +=Math.log(2) - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+							
 						
 					}
 				}
 			}
 		}
+		
+		
 		// Third term in eqn 20. Compute post likelihood.
 		for (int k = 0; k < nTopics; k++) {
 			postLikelihood += ((delta - 1) * Math.log(x[k])) - ((x[k] * delta) / currUser.topicalInterests[k]);// now
@@ -645,13 +812,12 @@ public class MPHAT {
 			// x
 		}
 
-		//likelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
-		likelihood = nonFollowingLikelihood;
+		likelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
+		//likelihood = followingLikelihood;
 		
 		return likelihood;
 	}
 	
-
 	/***
 	 * compute gradient of likelihood of data with respect to hub of u in topic
 	 * k when the hub is x, i.e., if if L(data|parameters) = f(H_u) +
@@ -696,16 +862,6 @@ public class MPHAT {
 						}
 						HupAvp = HupAvp * lamda;
 
-//						followingLikelihood += (1 / (1 - Math.exp(-HupAvp))
-//								* -Math.exp(-lamda * x * currUser.topicalPlatformPreference[k][p]
-//										* following.authorities[k] * following.topicalPlatformPreference[k][p])
-//								* (-lamda * following.authorities[k] * following.topicalPlatformPreference[k][p]
-//										* currUser.topicalPlatformPreference[k][p]))
-//								- (1 / (Math.exp(-HupAvp) + 1)
-//										* Math.exp(-lamda * x * currUser.topicalPlatformPreference[k][p]
-//												* following.authorities[k] * following.topicalPlatformPreference[k][p])
-//										* (-lamda * following.authorities[k] * following.topicalPlatformPreference[k][p]
-//												* currUser.topicalPlatformPreference[k][p]));
 						followingLikelihood += (1 / (1 - Math.exp(-HupAvp))
 								* -Math.exp(-HupAvp)
 								* (-lamda * following.authorities[k] * following.topicalPlatformPreference[k][p]
@@ -741,15 +897,7 @@ public class MPHAT {
 							}
 						}
 						HupAvp = HupAvp * lamda;
-//						nonFollowingLikelihood += (-lamda * currUser.topicalPlatformPreference[k][p]
-//								* nonFollowing.authorities[k] * nonFollowing.topicalPlatformPreference[k][p])
-//								- ((1 / (Math.exp(-HupAvp) + 1))
-//										* (Math.exp(-lamda * x * currUser.topicalPlatformPreference[k][p]
-//												* nonFollowing.authorities[k]
-//														* nonFollowing.topicalPlatformPreference[k][p]))
-//										* (-lamda * nonFollowing.authorities[k]
-//												* nonFollowing.topicalPlatformPreference[k][p]
-//														* currUser.topicalPlatformPreference[k][p]));
+
 						nonFollowingLikelihood += (-lamda * currUser.topicalPlatformPreference[k][p] * nonFollowing.authorities[k] * nonFollowing.topicalPlatformPreference[k][p])
 								- ((1 / (Math.exp(-HupAvp) + 1))
 										* (Math.exp(-HupAvp))
@@ -761,14 +909,13 @@ public class MPHAT {
 		// Third term in eqn 22. Compute post likelihood
 		postLikelihood = ((delta - 1) / x) - (delta / currUser.topicalInterests[k]);
 
-		//gradLikelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
+		gradLikelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
+		//gradLikelihood = followingLikelihood;
 		
-		gradLikelihood = nonFollowingLikelihood;
-
+		
 		return gradLikelihood;
 	}
 	
-
 	/***
 	 * alternating step to optimize hubs of user u
 	 * 
@@ -836,7 +983,6 @@ public class MPHAT {
 		}
 	}
 	
-
 	/***
 	 * compute likelihood of data as a function of platform preference for topic
 	 * k of u when the preference is x, i.e., if L(data|parameters) = f(Eta_uk)
@@ -884,8 +1030,9 @@ public class MPHAT {
 
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-							linkLikelihood += Math.log(fHupAvp);
+							//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							//linkLikelihood += Math.log(fHupAvp);
+							linkLikelihood += Math.log(1-Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp)+1);
 						}
 					}
 				}
@@ -917,8 +1064,9 @@ public class MPHAT {
 								}
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-							linkLikelihood += Math.log(fHupAvp);
+							//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							//linkLikelihood += Math.log(fHupAvp);
+							linkLikelihood += Math.log(1-Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp)+1);
 						}
 					}
 				}
@@ -953,8 +1101,9 @@ public class MPHAT {
 								}
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-							nonLinkLikelihood += Math.log(1 - fHupAvp);
+							//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							//nonLinkLikelihood += Math.log(1 - fHupAvp);
+							nonLinkLikelihood +=Math.log(2) - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
 						}
 					}
 				}
@@ -986,8 +1135,9 @@ public class MPHAT {
 								}
 							}
 							HupAvp = HupAvp * lamda;
-							double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-							nonLinkLikelihood += Math.log(1 - fHupAvp);
+							//double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
+							//nonLinkLikelihood += Math.log(1 - fHupAvp);
+							nonLinkLikelihood +=Math.log(2) - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
 						}
 					}
 				}
@@ -995,17 +1145,16 @@ public class MPHAT {
 		}
 
 		// Third term in eqn 28. Compute post likelihood.
+		double denominator = 0;
+		for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+			denominator += Math.exp(x[p]);
+		}
 		for (int s = 0; s < currUser.nPosts; s++) {
 			int z = currUser.posts[s].topic;
 			int currP = currUser.posts[s].platform;
-			double denominator = 0;
 			if (currUser.postBatches[s] == batch) {
-				if (z == k) {
-					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-						denominator += Math.exp(currUser.topicalPlatformPreference[z][p]);
-					}
-					double nominator = Math.exp(currUser.topicalPlatformPreference[z][currP]);
-					postLikelihood += Math.log(nominator / denominator);
+				if (z==k){
+					postLikelihood += Math.log(Math.exp(x[currP]) / denominator);
 				}
 			}
 		}
@@ -1016,11 +1165,11 @@ public class MPHAT {
 		}
 
 		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		//likelihood = postLikelihood;
 
 		return likelihood;
 	}
 	
-
 	/***
 	 * compute gradient of likelihood of data with respect to platform
 	 * preference of u in topic k when the preference is x, i.e., if if
@@ -1069,14 +1218,13 @@ public class MPHAT {
 
 						}
 						HupAvp = HupAvp * lamda;
-						linkLikelihood += ((1 / (1 - Math.exp(-HupAvp)))
-								* (-Math.exp(-lamda * currUser.hubs[k] * x * following.authorities[k]
-										* following.topicalPlatformPreference[k][p]))
+						
+						linkLikelihood += (1 / (1 - Math.exp(-HupAvp))
+								* -Math.exp(-HupAvp)
 								* (-lamda * currUser.hubs[k] * following.authorities[k]
 										* following.topicalPlatformPreference[k][p]))
-								- ((1 / (Math.exp(-HupAvp) + 1))
-										* (-Math.exp(-lamda * currUser.hubs[k] * x * following.authorities[k]
-												* following.topicalPlatformPreference[k][p]))
+								- (1 / (Math.exp(-HupAvp) + 1)
+										* Math.exp(-HupAvp)
 										* (-lamda * currUser.hubs[k] * following.authorities[k]
 												* following.topicalPlatformPreference[k][p]));
 					}
@@ -1106,15 +1254,13 @@ public class MPHAT {
 							}
 						}
 						HupAvp = HupAvp * lamda;
-						linkLikelihood += ((1 / (1 - Math.exp(-HupAvp)))
-								* (-Math.exp(-lamda * follower.hubs[k] * follower.topicalPlatformPreference[k][p]
-										* currUser.authorities[k] * x))
+
+						linkLikelihood += (1 / (1 - Math.exp(-HupAvp)) 
+								* -Math.exp(-HupAvp) 
 								* (-lamda * follower.hubs[k] * follower.topicalPlatformPreference[k][p]
 										* currUser.authorities[k]))
-								- ((1 / (Math.exp(-HupAvp) + 1))
-										* (-Math.exp(
-												-lamda * follower.hubs[k] * follower.topicalPlatformPreference[k][p]
-														* currUser.authorities[k] * x))
+								- (1 / (Math.exp(-HupAvp) + 1) *
+										Math.exp(-HupAvp) 
 										* (-lamda * follower.hubs[k] * follower.topicalPlatformPreference[k][p]
 												* currUser.authorities[k]));
 					}
@@ -1147,11 +1293,11 @@ public class MPHAT {
 							}
 						}
 						HupAvp = HupAvp * lamda;
+
 						nonLinkLikelihood += (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
 								* nonFollowing.topicalPlatformPreference[k][p])
-								- ((1 / Math.exp(-HupAvp))
-										* Math.exp(-lamda * currUser.hubs[k] * x * nonFollowing.authorities[k]
-												* nonFollowing.topicalPlatformPreference[k][p])
+								- ((1 / (Math.exp(-HupAvp) + 1))
+										* (Math.exp(-HupAvp))
 										* (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
 												* nonFollowing.topicalPlatformPreference[k][p]));
 					}
@@ -1182,12 +1328,10 @@ public class MPHAT {
 							}
 						}
 						HupAvp = HupAvp * lamda;
+						
 						nonLinkLikelihood += (-lamda * nonFollower.hubs[k] * nonFollower.topicalPlatformPreference[k][p]
 								* currUser.authorities[k])
-								- ((1 / Math.exp(-HupAvp))
-										* Math.exp(-lamda * nonFollower.hubs[k]
-												* nonFollower.topicalPlatformPreference[k][p] * currUser.authorities[k]
-														* x)
+								- ((1 / (Math.exp(-HupAvp) + 1)) * (Math.exp(-HupAvp))
 										* (-lamda * nonFollower.hubs[k] * nonFollower.topicalPlatformPreference[k][p]
 												* currUser.authorities[k]));
 					}
@@ -1198,22 +1342,25 @@ public class MPHAT {
 		// Third term in eqn 31. Compute post likelihood.
 		double firstSubTerm = 0;
 		double secondSubTerm = 0;
+		double thirdSubTerm = 0;
+		for (int t = 0; t < Configure.NUM_OF_PLATFORM; t++) {
+			if (p==t){
+				thirdSubTerm += Math.exp(x);
+			} else {
+				thirdSubTerm += Math.exp(currUser.topicalPlatformPreference[k][t]);
+			}
+		}
 		for (int s = 0; s < currUser.nPosts; s++) {
 			int z = currUser.posts[s].topic;
 			int j = currUser.posts[s].platform;
 			if (currUser.postBatches[s] == batch) {
-				if (z == k && j == p) {
-					firstSubTerm++;
+				if (z==k && p==j){
+					firstSubTerm +=1; 
 				}
-				if (z == k) {
-					double denominator = 0;
-					for (int t = 0; t < Configure.NUM_OF_PLATFORM; t++) {
-						denominator += Math.exp(currUser.topicalPlatformPreference[z][t]);
-					}
-					secondSubTerm = (1 / denominator) * Math.exp(x);
+				if (z==k){
+					secondSubTerm += (1/thirdSubTerm) * Math.exp(x);
 				}
 			}
-
 		}
 		postLikelihood += firstSubTerm - secondSubTerm;
 
@@ -1221,20 +1368,20 @@ public class MPHAT {
 		platformLikelihood += ((alpha - 1) / x) - (1 / theta);
 
 		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
-
+		//likelihood =  postLikelihood;
+		
 		return likelihood;
 
 	}
 	
-
 	/***
 	 * alternating step to optimize platform preference of user u
 	 * 
 	 * @param u
 	 */
-	private void altOptimize_PlatformPreference(int u) {
+	private void altOptimize_PlatformPreference(int u, int k) {
 		// the topical platform preferences is a 2D array
-		for (int k = 0; k < nTopics; k++) {
+		
 			double[] grad = new double[Configure.NUM_OF_PLATFORM];
 			double[] currentX = new double[Configure.NUM_OF_PLATFORM];
 			double[] x = new double[Configure.NUM_OF_PLATFORM];
@@ -1286,9 +1433,9 @@ public class MPHAT {
 						currentX[p] = x[p];
 					}
 					// to see if F actually reduce after every iteration
-					// System.out.printf("alt_hub: u = %d iter = %d f = %f\n",
-					// u,
-					// iter, f);
+					 //System.out.printf("alt_hub: u = %d iter = %d f = %f\n",
+					 //u,
+					 //iter, f);
 				} else {
 					// to see if F actually reduce after every iteration
 					// System.out.printf("alt_hub: u = %d iter = %d f = %f\n",
@@ -1297,10 +1444,8 @@ public class MPHAT {
 					break;// cannot improve further
 				}
 			}
-		}
 	}
 	
-
 	/***
 	 * to sample topic for post n of user u
 	 * 
@@ -1380,7 +1525,6 @@ public class MPHAT {
 		System.exit(-1);
 	}
 	
-
 	/***
 	 * alternating step to optimize topics' word distribution
 	 */
@@ -1418,7 +1562,6 @@ public class MPHAT {
 		}
 	}
 	
-
 	/***
 	 * checking if the gradient computation of likelihood of user topical
 	 * interest X_{u,k} is properly implemented
@@ -1448,7 +1591,6 @@ public class MPHAT {
 		}
 	}
 	
-
 	/***
 	 * checking if the gradient computation of likelihood of A_{v,k} is properly
 	 * implemented
@@ -1477,7 +1619,6 @@ public class MPHAT {
 		}
 	}
 	
-
 	/***
 	 * checking if the gradient computation of likelihood of H_{u,k} is properly
 	 * implemented
@@ -1508,7 +1649,6 @@ public class MPHAT {
 		}
 	}
 	
-
 	/***
 	 * checking if the gradient computation of likelihood of H_{u,k} is properly
 	 * implemented
@@ -1579,15 +1719,6 @@ public class MPHAT {
 			}
 		}
 
-		// compute user topical interests base on the random topic assignment
-		// for (int u = 0; u < dataset.nUsers; u++) {
-		// User currUser = dataset.users[u];
-		// for (int k = 0; k < nTopics; k++) {
-		// currUser.topicalInterests[k] = (n_zu[k][u] + alpha) / (sum_nzu[u] +
-		// (alpha * dataset.nUsers));
-		// }
-		// }
-
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
 			currUser.topicalInterests = new double[nTopics];
@@ -1621,15 +1752,6 @@ public class MPHAT {
 
 				g = new GammaDistribution(delta, currUser.topicalInterests[k] / delta);
 				currUser.hubs[k] = g.sample();
-
-				// NormalDistribution g = new
-				// NormalDistribution(currUser.topicalInterests[k], sigma);
-				// currUser.authorities[k] = Math.exp(g.sample());
-
-				// g = new NormalDistribution(currUser.topicalInterests[k],
-				// delta);
-				// currUser.hubs[k] = Math.exp(g.sample());
-
 			}
 		}
 
@@ -1637,11 +1759,220 @@ public class MPHAT {
 		altOptimize_topics();
 
 	}
+	
+	public void altCheck_TopicalInterest(int u) {
+		altOptimize_topicalInterest(u);
+	}
 
+	public void altCheck_Authority(int u) {
+		altOptimize_Authorities(u);
+	}
+
+	public void altCheck_Hub(int u) {
+		altOptimize_Hubs(u);
+	}
+	
+	public void altCheck_PlatformPreference(int u, int k) {
+		altOptimize_PlatformPreference(u,k);
+	}
+
+	/***
+	 * modeling learning
+	 */
+	public void train() {
+		init();
+		double maxLikelihood = 0;
+		double currentLikelihood = 0;
+		System.out.println("Datapath:" + this.datapath);
+		System.out.println("Alpha:" + this.alpha);
+		System.out.println("Line Search Alpha:" + this.lineSearch_alpha);
+		System.out.println("Line Search Beta:" + this.lineSearch_beta);
+		System.out.println("Line Search Max Iterations:" + this.lineSearch_MaxIterations);
+		System.out.println("#Topics:" + this.nTopics);
+		System.out.println("#platforms:" + Configure.NUM_OF_PLATFORM);
+		for (int iter = 0; iter < max_GibbsEM_Iterations; iter++) {
+			// EM part that employs alternating optimization
+			for (int u = 0; u < dataset.nUsers; u++) {
+				altOptimize_topicalInterest(u);
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				for (int k = 0; k < nTopics; k++) {
+					altOptimize_PlatformPreference(u,k);
+				}
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				altOptimize_Authorities(u);
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				altOptimize_Hubs(u);
+			}
+			
+			altOptimize_topics();
+			// Gibbs part
+			for (int u = 0; u < dataset.nUsers; u++) {
+				for (int n = 0; n < dataset.users[u].nPosts; n++) {
+					// only consider posts in batch
+					if (dataset.users[u].postBatches[n] == batch) {
+						samplePostTopic_EMGibbs(u, n);
+					}
+				}
+			}
+			// set first Likelihood as the maxLikelihood
+			currentLikelihood = getLikelihood();
+			if (iter == 0) {
+				maxLikelihood = currentLikelihood;
+			} else {
+				if (maxLikelihood < currentLikelihood) {
+					maxLikelihood = currentLikelihood;
+					// set optimized topicWordDist to be the current
+					// TopicWordsDist
+					optTopicWordDist = topicWordDist;
+					// set optimized user topical interest, authority and hub
+					for (int u = 0; u < dataset.nUsers; u++) {
+						User currUser = dataset.users[u];
+						currUser.optTopicalInterests = currUser.topicalInterests;
+						currUser.optAuthorities = currUser.authorities;
+						currUser.optHubs = currUser.hubs;
+						currUser.optTopicalPlatformPreference = currUser.topicalPlatformPreference;
+					}
+				}
+			}
+			System.out.printf("likelihood after %d steps: %f, max %f ", iter, currentLikelihood, maxLikelihood);
+			System.out.println();
+		}
+		// print out the learned parameters
+		output_topicWord();
+		output_topicInterest();
+		output_platformPreference();
+		output_authority();
+		output_hub();
+		outputPostTopicTopWords(20);
+	}
+	
+	public void output_topicWord() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_topicalWordDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int k = 0; k < nTopics; k++) {
+				String text = Integer.toString(k);
+				for (int w = 0; w < dataset.vocabulary.length; w++) {
+					text = text + "," + Double.toString(optTopicWordDist[k][w]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to topical word file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	private void outputPostTopicTopWords(int k) {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_topTopicWords.csv");
+			BufferedWriter bw = new BufferedWriter(new FileWriter(f.getAbsoluteFile()));
+			RankingTool rankTool = new RankingTool();
+			WeightedElement[] topWords = null;
+			for (int z = 0; z < nTopics; z++) {
+				bw.write(z + "\n");
+				topWords = rankTool.getTopKbyWeight(dataset.vocabulary, optTopicWordDist[z], k);
+				for (int j = 0; j < k; j++)
+					bw.write("," + topWords[j].name + "," + topWords[j].weight + "\n");
+			}
+			bw.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing out post topic top words to file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_topicInterest() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userTopicalInterestDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					text = text + "," + Double.toString(currUser.optTopicalInterests[k]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to topical interest file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_platformPreference() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userTopicalPlatformPreferenceDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					for (int p=0; p<Configure.NUM_OF_PLATFORM; p++){
+						text = text + "," + p + "," + k + "," + Double.toString(currUser.optTopicalPlatformPreference[k][p]);
+					}
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to platform preference file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_authority() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userAuthorityDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					text = text + "," + Double.toString(currUser.optAuthorities[k]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to authority file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	public void output_hub() {
+		try {
+			File f = new File(dataset.path + "/" + nTopics + "/l_userHubDistributions.csv");
+			FileWriter fo = new FileWriter(f);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				String text = currUser.userId;
+				for (int k = 0; k < nTopics; k++) {
+					text = text + "," + Double.toString(currUser.optHubs[k]);
+				}
+				fo.write(text + "\n");
+			}
+			fo.close();
+		} catch (Exception e) {
+			System.out.println("Error in writing to topical interest file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
 	public static void main(String[] args) {
 		String datasetPath = "E:/users/roylee.2013/Chardonnay/synthetic/data/";
-		// String datasetPath =
-		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
+		// String datasetPath = "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		int nTopics = 10;
 		int batch = 1;
 
@@ -1656,11 +1987,12 @@ public class MPHAT {
 		// model.altCheck_TopicalInterest(u);
 		// model.altCheck_Authority(u);
 		// model.altCheck_Hub(u);
-		// model.train();
-		//model.gradCheck_Authority(u, k);
-		 model.gradCheck_Hub(u, k);
+		// model.altCheck_PlatformPreference(u,k);
+		 model.train();
+		// model.gradCheck_Authority(u, k);
+		// model.gradCheck_Hub(u, k);
 		// model.gradCheck_TopicalInterest(u, k);
-		// model.gradCheck_PlatformPreference(u,k,0);
+		// model.gradCheck_PlatformPreference(u,k,1);
 	}
 
 }
