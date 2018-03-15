@@ -2,20 +2,20 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="nPlatformFollowers" key="selection"/>
+		<item value="getLikelihood(" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
-			<item value="nPlatformFollowers"/>
-			<item value="nonFollowingBatches"/>
+			<item value="getLikelihood("/>
+			<item value="getLikelihood"/>
+			<item value="alt_hub"/>
 			<item value="altOptimize_Hubs"/>
 			<item value="altCheck_Hub"/>
+			<item value="nPlatformFollowers"/>
+			<item value="nonFollowingBatches"/>
 			<item value="altOptimize_Authorities"/>
-			<item value="altCheck_Authority"/>
-			<item value="altOptimize_topicalInterest"/>
-			<item value="samplePostTopic_EMGibbs"/>
 		</list>
 		<list key="replacehistory">
 		</list>
