@@ -16,6 +16,14 @@ public class MPHAT {
 	public int nTopics;
 	public int batch;
 
+	private static boolean initByTopicModeling = true;
+	private static boolean onlyLearnAuthorityHub = false;
+	private static boolean onlyLearnGibbs = true;
+
+	public static int gibbs_BurningPeriods = 20;
+	public static int max_Gibbs_Iterations = 100;
+	public static int gibbs_Sampling_Gap = 10;
+
 	// priors
 	public double alpha;// prior for users' platform preferences
 	public double kappa;// prior for user's topic interests
@@ -1596,6 +1604,186 @@ public class MPHAT {
 		}
 	}
 
+	private void samplePostTopic_Gibbs(int u, int n) {
+		Post currPost = dataset.users[u].posts[n];
+		// reduce current counts
+		int currZ = currPost.topic;
+		n_zu[currZ][u]--;
+		if (n_zu[currZ][u] < 0) {
+			System.out.printf("u = %d z = %d n_zu = %d\n", u, currZ, n_zu[currZ][u]);
+			System.exit(-1);
+		}
+		sum_nzw[currZ] -= currPost.nWords;
+		for (int w = 0; w < currPost.nWords; w++) {
+			int word = currPost.words[w];
+			n_zw[currZ][word]--;
+		}
+
+		double sump = 0;
+		// p: p(z_u,s = z| rest)
+
+		double[] p = new double[nTopics];
+		double max = -Double.MAX_VALUE;
+		for (int z = 0; z < nTopics; z++) {
+			// User-topic
+			p[z] = Math.log(n_zu[z][u] + alpha);
+			// topic-word
+			for (int w = 0; w < currPost.nWords; w++) {
+				int word = currPost.words[w];
+				p[z] += Math.log((n_zw[z][word] + gamma) / (sum_nzw[z] + gamma * dataset.vocabulary.length));
+			}
+			// update min
+			if (max < p[z]) {
+				max = p[z];
+			}
+
+		}
+		// convert log(sump) to probability
+		for (int z = 0; z < nTopics; z++) {
+			p[z] = p[z] - max;
+			p[z] = Math.exp(p[z]);
+			// cumulative
+			p[z] = sump + p[z];
+			sump = p[z];
+		}
+
+		sump = rand.nextDouble() * sump;
+		for (int z = 0; z < nTopics; z++) {
+			if (sump > p[z]) {
+				continue;
+			} else {
+				// Sample topic
+				currPost.topic = z;
+				// increase the counts
+				n_zu[z][u]++;
+				sum_nzw[z] += currPost.nWords;
+				for (int w = 0; w < currPost.nWords; w++) {
+					int word = currPost.words[w];
+					n_zw[z][word]++;
+				}
+				return;
+			}
+		}
+		System.err.println("Something wrong!!! ");
+		for (int k = 0; k < nTopics; k++) {
+			System.out.printf("theta[%d] = %.12f \t p[%d] = %.12f sump = %.12f\n", k,
+					dataset.users[u].topicalInterests[k], k, p[k], sump);
+		}
+		System.exit(-1);
+	}
+
+	/****
+	 * initialize topic assignment for posts of user u
+	 * 
+	 * @param u
+	 */
+	private void initPostTopic(int u) {
+		// System.out.printf("initializing for user %d\n", u);
+		User currUser = dataset.users[u];
+		for (int n = 0; n < currUser.posts.length; n++) {
+			// only consider posts in batch
+			if (currUser.postBatches[n] == batch) {
+				int randTopic = rand.nextInt(nTopics);
+				currUser.posts[n].topic = randTopic;
+			}
+		}
+	}
+
+	private void gibbsInit() {
+		// initialize the count variables
+		int[][] final_n_zw = new int[nTopics][dataset.vocabulary.length];
+		int[] final_sum_nzw = new int[nTopics];
+		int[][] final_n_zu = new int[nTopics][dataset.nUsers];
+
+		for (int z = 0; z < nTopics; z++) {
+			sum_nzw[z] = 0;
+			final_sum_nzw[z] = 0;
+			for (int w = 0; w < dataset.vocabulary.length; w++) {
+				n_zw[z][w] = 0;
+				final_n_zw[z][w] = 0;
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				n_zu[z][u] = 0;
+				final_n_zu[z][u] = 0;
+			}
+		}
+		// update count variable base on the posts' topic assignment
+		for (int u = 0; u < dataset.nUsers; u++) {
+			User currUser = dataset.users[u];
+			for (int n = 0; n < currUser.posts.length; n++) {
+				Post currPost = currUser.posts[n];
+				// only consider posts in batch
+				if (currUser.postBatches[n] == batch) {
+					int z = currPost.topic;
+					n_zu[z][u]++;
+					sum_nzw[z] += currPost.nWords;
+					for (int w = 0; w < currPost.nWords; w++) {
+						int wordIndex = currPost.words[w];
+						n_zw[z][wordIndex]++;
+					}
+
+				}
+			}
+		}
+		// gibss sampling
+		for (int iter = 0; iter < gibbs_BurningPeriods + max_Gibbs_Iterations; iter++) {
+			System.out.println("Gibb Iteration:" + iter);
+			for (int u = 0; u < dataset.nUsers; u++) {
+				for (int n = 0; n < dataset.users[u].nPosts; n++) {
+					if (dataset.users[u].postBatches[n] == batch) {
+						samplePostTopic_Gibbs(u, n);
+
+					}
+				}
+			}
+
+			if (iter < gibbs_BurningPeriods) {
+				continue;
+			}
+			if (iter % gibbs_Sampling_Gap != 0) {
+				continue;
+			}
+
+			for (int z = 0; z < nTopics; z++) {
+				final_sum_nzw[z] += sum_nzw[z];
+				for (int w = 0; w < dataset.vocabulary.length; w++) {
+					final_n_zw[z][w] += n_zw[z][w];
+				}
+				for (int u = 0; u < dataset.nUsers; u++) {
+					final_n_zu[z][u] += n_zu[z][u];
+				}
+			}
+		}
+
+		int[] final_sum_nzu = new int[dataset.nUsers];
+		for (int u = 0; u < dataset.nUsers; u++) {
+			final_sum_nzu[u] = 0;
+		}
+
+		// topics
+		for (int z = 0; z < nTopics; z++) {
+			for (int w = 0; w < dataset.vocabulary.length; w++) {
+				topicWordDist[z][w] = (final_n_zw[z][w] + gamma)
+						/ (final_sum_nzw[z] + gamma * dataset.vocabulary.length);
+			}
+			for (int u = 0; u < dataset.nUsers; u++) {
+				final_sum_nzu[u] += final_n_zu[z][u];
+			}
+		}
+		// users' topical interests
+		for (int u = 0; u < dataset.nUsers; u++) {
+			for (int z = 0; z < nTopics; z++) {
+				dataset.users[u].topicalInterests[z] = (final_n_zu[z][u] + alpha)
+						/ (final_sum_nzu[u] + nTopics * alpha);
+
+				if (dataset.users[u].topicalInterests[z] < 0) {
+					System.out.printf("u = %d z = %d theta = %f\n", u, z, dataset.users[u].topicalInterests[z]);
+					System.exit(-1);
+				}
+			}
+		}
+	}
+
 	/***
 	 * initialize the data before training
 	 */
@@ -1604,12 +1792,34 @@ public class MPHAT {
 		// interest
 		gamma = 0.001;// prior for word distribution
 		sigma = 2.0;// shape parameter of users' authorities
-		delta = 2.0;// shapa parameter of users' hubs
+		delta = 2.0;// shape parameter of users' hubs
 		kappa = 2.0;// shape parameter of user interest latent vector
 		alpha = 2.0;// shape parameter of user platform preference vector
 		theta = 2.0;// scale parameter of user interests/platform preference
 		// vectors
 		rand = new Random();
+
+		// allocate memory for counts
+		n_zu = new int[nTopics][dataset.nUsers];
+		n_zw = new int[nTopics][dataset.vocabulary.length];
+		sum_nzw = new int[nTopics];
+		
+		// allocate memory for the users
+		for (int u = 0; u < dataset.nUsers; u++) {
+			User currUser = dataset.users[u];
+			currUser.authorities = new double[nTopics];
+			currUser.hubs = new double[nTopics];
+			currUser.topicalInterests = new double[nTopics];
+			currUser.topicalPlatformPreference = new double[nTopics][Configure.NUM_OF_PLATFORM];
+			currUser.optAuthorities = new double[nTopics];
+			currUser.optHubs = new double[nTopics];
+			currUser.optTopicalInterests = new double[nTopics];
+			currUser.optTopicalPlatformPreference = new double[nTopics][Configure.NUM_OF_PLATFORM];
+		}
+
+		// allocate memory for topics
+		topicWordDist = new double[nTopics][dataset.vocabulary.length];
+		optTopicWordDist = new double[nTopics][dataset.vocabulary.length];
 
 		// initialize the count variables
 		for (int u = 0; u < dataset.nUsers; u++) {
@@ -1621,27 +1831,49 @@ public class MPHAT {
 
 		// randomly assign topics to posts
 		for (int u = 0; u < dataset.nUsers; u++) {
-			User currUser = dataset.users[u];
-			for (int n = 0; n < currUser.posts.length; n++) {
-				// only consider posts in batch
-				if (currUser.postBatches[n] == batch) {
-					int randTopic = rand.nextInt(nTopics);
-					currUser.posts[n].topic = randTopic;
-					sum_nzu[u] += 1;
-					n_zu[randTopic][u] += 1;
+			initPostTopic(u);
+//			User currUser = dataset.users[u];
+//			for (int n = 0; n < currUser.posts.length; n++) {
+//				// only consider posts in batch
+//				if (currUser.postBatches[n] == batch) {
+//					int randTopic = rand.nextInt(nTopics);
+//					currUser.posts[n].topic = randTopic;
+//					sum_nzu[u] += 1;
+//					n_zu[randTopic][u] += 1;
+//				}
+//			}
+		}
+
+		if (initByTopicModeling) {
+			// initialize by topic modeling
+			gibbsInit();
+		} else {
+			// topics
+			altOptimize_topics();
+			// users' topical interest
+			for (int u = 0; u < dataset.nUsers; u++) {
+				User currUser = dataset.users[u];
+				for (int z = 0; z < nTopics; z++) {
+					n_zu[z][u] = 0;
+				}
+				for (int n = 0; n < currUser.posts.length; n++) {
+					// only consider posts in batch
+					if (currUser.postBatches[n] == batch) {
+						n_zu[currUser.posts[n].topic][u] += 1;
+					}
+				}
+				for (int z = 0; z < nTopics; z++) {
+					currUser.topicalInterests[z] = (n_zu[z][u] + alpha) / (currUser.nPosts + nTopics * alpha);
+
 				}
 			}
 		}
 
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
-			currUser.topicalInterests = new double[nTopics];
-			currUser.topicalPlatformPreference = new double[nTopics][Configure.NUM_OF_PLATFORM];
 			for (int k = 0; k < nTopics; k++) {
-
 				GammaDistribution g = new GammaDistribution(kappa, theta);
 				currUser.topicalInterests[k] = g.sample();
-
 				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 					if (currUser.platforms[p] == 1) {
 						g = new GammaDistribution(alpha, theta);
@@ -1657,20 +1889,16 @@ public class MPHAT {
 		// hub
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
-			currUser.authorities = new double[nTopics];
-			currUser.hubs = new double[nTopics];
 			for (int k = 0; k < nTopics; k++) {
-
 				GammaDistribution g = new GammaDistribution(sigma, currUser.topicalInterests[k] / sigma);
 				currUser.authorities[k] = g.sample();
-
 				g = new GammaDistribution(delta, currUser.topicalInterests[k] / delta);
 				currUser.hubs[k] = g.sample();
 			}
 		}
 
 		// compute topic words distribution base on the random topic assignment
-		altOptimize_topics();
+		// altOptimize_topics();
 
 	}
 
@@ -1899,6 +2127,8 @@ public class MPHAT {
 
 		int u = rand.nextInt(100);
 		int k = rand.nextInt(nTopics);
+
+		initByTopicModeling = true;
 
 		// model.altCheck_TopicalInterest(u);
 		// model.altCheck_Authority(u);
