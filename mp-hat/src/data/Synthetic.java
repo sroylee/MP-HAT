@@ -29,10 +29,11 @@ public class Synthetic {
 	private double topicSkewness = 0.01;// similarly, each topic focuses on 1%
 										// of words whose probabilities summing
 										// up to 90%
+	private double singlePlatformProp = 0.3;
 	private double platformSkeness;
 
-	private int minNPosts = 100;
-	private int maxNPosts = 200;
+	private int minNPosts = 200;
+	private int maxNPosts = 300;
 
 	private int minNWords = 10;
 	private int maxNWords = 20;
@@ -46,6 +47,8 @@ public class Synthetic {
 	public double delta = 2;
 
 	private Random rand = new Random();
+
+	private double lambda = 0.01;
 
 	private int[] nTopicCounts;
 
@@ -84,7 +87,39 @@ public class Synthetic {
 		return userLatentFactor;
 	}
 
-	private double[][][] genUserPlatformPreference(int nUsers, int nTopics, int nPlatforms) {
+	private int[][] genUserActivePlatforms(int nUsers, int nPlatforms, double prop) {
+		int[][] activePlatforms = new int[nUsers][nPlatforms];
+		int[] platforms = new int[nPlatforms];
+		for (int p = 0; p < nPlatforms; p++) {
+			platforms[p] = p;
+		}
+		for (int u = 0; u < nUsers; u++) {
+			// randomly shuffle
+			for (int i = 0; i < nPlatforms; i++) {
+				int p = rand.nextInt(nPlatforms);
+				int pp = rand.nextInt(nPlatforms);
+				int k = platforms[p];
+				platforms[p] = platforms[pp];
+				platforms[pp] = k;
+			}
+			//
+			for (int i = 0; i < nPlatforms; i++) {
+				activePlatforms[u][i] = 0;
+			}
+			if (rand.nextDouble() < prop) {
+				activePlatforms[u][platforms[0]] = 1;
+			} else {
+				for (int i = 0; i < nPlatforms; i++) {
+					activePlatforms[u][i] = 1;
+				}
+			}
+		}
+
+		return activePlatforms;
+	}
+
+	private double[][][] genUserPlatformPreference(int nUsers, int nTopics, int nPlatforms,
+			int[][] userActivePlatforms) {
 		double[][][] userPlatformPreference = new double[nUsers][nTopics][];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
@@ -101,6 +136,21 @@ public class Synthetic {
 
 				for (int p = 0; p < nPlatforms; p++) {
 					userPlatformPreference[u][z][p] = Math.log(norm * userPlatformPreference[u][z][p]);
+				}
+
+				int activePlatform = -1;
+				for (int p = 0; p < nPlatforms; p++) {
+					if (userActivePlatforms[u][p] == 1) {
+						activePlatform = p;
+						break;
+					}
+				}
+
+				for (int p = 0; p < nPlatforms; p++) {
+					if (userActivePlatforms[u][p] == 0) {
+						userPlatformPreference[u][z][activePlatform] += userPlatformPreference[u][z][p];
+						userPlatformPreference[u][z][p] = Double.NEGATIVE_INFINITY;
+					}
 				}
 			}
 		}
@@ -161,10 +211,10 @@ public class Synthetic {
 			double[][] uPlatformPreference, int platform) {
 		double prod = 0;
 		for (int z = 0; z < nTopics; z++) {
-			prod = userHub[z] * uPlatformPreference[z][platform] * userAuthority[z] * vPlatformPreference[z][platform];
+			prod += userHub[z] * uPlatformPreference[z][platform] * userAuthority[z] * vPlatformPreference[z][platform];
 		}
 
-		prod = MathTool.normalizationFunction(prod);
+		prod = MathTool.normalizationFunction(prod * lambda);
 		// System.out.println("p = " + p);
 		if (rand.nextDouble() < prod) {
 			return 1;
@@ -173,15 +223,22 @@ public class Synthetic {
 	}
 
 	private HashMap<Integer, HashMap<Integer, HashSet<Integer>>> genNetwork(int nUsers, int nTopics, int nPlatforms,
-			double[][] userAuthorities, double[][] userHubs, double[][][] userPlatformPreference) {
+			double[][] userAuthorities, double[][] userHubs, double[][][] userPlatformPreference,
+			int[][] userActivePlatforms) {
 		HashMap<Integer, HashMap<Integer, HashSet<Integer>>> followings = new HashMap<Integer, HashMap<Integer, HashSet<Integer>>>();
 		for (int u = 0; u < nUsers; u++) {
 			HashMap<Integer, HashSet<Integer>> uFollowings = new HashMap<Integer, HashSet<Integer>>();
 			for (int p = 0; p < nPlatforms; p++) {
+				if (userActivePlatforms[u][p] == 0) {
+					continue;
+				}
 				HashSet<Integer> upFollowings = new HashSet<Integer>();
 				for (int v = 0; v < nUsers; v++) {
 					if (u == v)
 						continue;
+					if (userActivePlatforms[v][p] == 0) {
+						continue;
+					}
 					int link = genLink(nTopics, userAuthorities[v], userPlatformPreference[v], userHubs[u],
 							userPlatformPreference[u], p);
 					if (link == 1) {
@@ -195,11 +252,15 @@ public class Synthetic {
 		return followings;
 	}
 
-	private void saveUsers(int nUsers, String outputPath) {
+	private void saveUsers(int nUsers, int[][] userActivePlatforms, String outputPath) {
 		try {
-			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/syn_users.csv", outputPath)));
+			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/users.csv", outputPath)));
 			for (int u = 0; u < nUsers; u++) {
-				bw.write(String.format("%d,user_%d\n", u, u));
+				bw.write(String.format("%d,user_%d", u, u));
+				for (int p = 0; p < userActivePlatforms[u].length; p++) {
+					bw.write(String.format(",%d", userActivePlatforms[u][p]));
+				}
+				bw.write("\n");
 			}
 			bw.close();
 		} catch (Exception e) {
@@ -210,7 +271,7 @@ public class Synthetic {
 
 	private void saveWords(int nWords, String outputPath) {
 		try {
-			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/syn_vocabulary.csv", outputPath)));
+			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/vocabulary.csv", outputPath)));
 			for (int w = 0; w < nWords; w++) {
 				bw.write(String.format("%d,word_%d\n", w, w));
 			}
@@ -228,7 +289,7 @@ public class Synthetic {
 			nTopicCounts = new int[nTopics];
 
 			int nPosts = 0;
-			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/syn_posts.csv", outputpath)));
+			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/posts.csv", outputpath)));
 			BufferedWriter bw_empirical = new BufferedWriter(
 					new FileWriter(String.format("%s/syn_userEmpiricalTopicDistribution.csv", outputpath)));
 			for (int u = 0; u < nUsers; u++) {
@@ -271,17 +332,17 @@ public class Synthetic {
 	}
 
 	private void genAndsaveNetwork(String outputpath, int nUsers, int nPlatforms, int nTopics,
-			double[][] userAuthorities, double[][] userHubs, double[][][] userPlatformPreference) {
+			double[][] userAuthorities, double[][] userHubs, double[][][] userPlatformPreference,
+			int[][] userActivePlatforms) {
 		try {
 			HashMap<Integer, HashMap<Integer, HashSet<Integer>>> followings = genNetwork(nUsers, nTopics, nPlatforms,
-					userAuthorities, userHubs, userPlatformPreference);
+					userAuthorities, userHubs, userPlatformPreference, userActivePlatforms);
 			// File file = new File(String.format("%s/followings", outputpath));
 			// if (!file.exists()) {
 			// file.mkdir();
 			// }
 
-			BufferedWriter bw = new BufferedWriter(
-					new FileWriter(String.format("%s/syn_relationships.csv", outputpath)));
+			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/relationships.csv", outputpath)));
 			for (int u = 0; u < nUsers; u++) {
 				if (!followings.containsKey(u)) {
 					System.out.printf("no-followings u %d\n", u);
@@ -381,20 +442,25 @@ public class Synthetic {
 	public void genData(int nUsers, int nPlatforms, int nTopics, int nWords, String outputPath) {
 		double[][] topics = genTopics(nTopics, nWords);
 		double[][] userLatentFactors = genUserLatentFactors(nUsers, nTopics);
-		platformSkeness = 1d / nTopics;
-		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms);
+		platformSkeness = 1d / nPlatforms;
+		int[][] userActivePlatforms = genUserActivePlatforms(nUsers, nPlatforms, singlePlatformProp);
+		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms,
+				userActivePlatforms);
 		double[][] userAuthorities = genUserAuthority(nUsers, nTopics, userLatentFactors);
 		double[][] userHubs = genUserHub(nUsers, nTopics, userLatentFactors);
-		saveUsers(nUsers, outputPath);
+		saveUsers(nUsers, userActivePlatforms, outputPath);
 		saveWords(nWords, outputPath);
 		genAndsaveTweet(outputPath, nUsers, nTopics, userLatentFactors, userPlatformPreference, topics);
-		genAndsaveNetwork(outputPath, nUsers, nPlatforms, nTopics, userAuthorities, userHubs, userPlatformPreference);
+		genAndsaveNetwork(outputPath, nUsers, nPlatforms, nTopics, userAuthorities, userHubs, userPlatformPreference,
+				userActivePlatforms);
 		saveGroundTruth(topics, userLatentFactors, userAuthorities, userHubs, userPlatformPreference, outputPath);
 	}
 
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
-		//generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output");
-		generator.genData(1000, 2, 10, 1000, "E:/users/roylee.2013/Chardonnay/synthetic");
+		generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output/syn_data");
+		// generator.genData(1000, 2, 10, 1000,
+		// "E:/users/roylee.2013/Chardonnay/synthetic");
+		System.out.printf("%f", Math.exp(Double.NEGATIVE_INFINITY));
 	}
 }

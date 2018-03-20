@@ -24,13 +24,13 @@ public class MultiThreadMPHAT {
 	public static int nTopics;
 	public static int batch;
 
-	private static boolean initByTopicModeling = false;
+	private static boolean initByTopicModeling = true;
 	private static boolean onlyLearnAuthorityHub = false;
-	private static boolean onlyLearnGibbs = false;
+	private static boolean onlyLearnGibbs = true;
 	private static boolean usePrior = true;
 
-	public static int gibbs_BurningPeriods = 20;
-	public static int max_Gibbs_Iterations = 100;
+	public static int gibbs_BurningPeriods = 50;
+	public static int max_Gibbs_Iterations = 200;
 	public static int gibbs_Sampling_Gap = 10;
 
 	// priors
@@ -124,8 +124,10 @@ public class MultiThreadMPHAT {
 				initUserPostTopic(threadStartIndex, threadEndIndex);
 			} else if (runOption.equals("getLoglikelihood")) {
 				getLogLikelihood(threadStartIndex, threadEndIndex);
-			} else if (runOption.equals("initUser")) {
-				initAuthorityHub(threadStartIndex, threadEndIndex);
+			} else if (runOption.equals("randomInitUser")) {
+				randomInitAuthorityHubPlatformPreference(threadStartIndex, threadEndIndex);
+			} else if (runOption.equals("gibbsInitUser")) {
+				gibbsInitAuthorityHubPlatformPreference(threadStartIndex, threadEndIndex);
 			}
 		}
 
@@ -179,7 +181,7 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		private void initAuthorityHub(int startIndex, int endIndex) {
+		private void randomInitAuthorityHubPlatformPreference(int startIndex, int endIndex) {
 			// NormalDistribution g;
 			for (int u = startIndex; u < endIndex; u++) {
 				User currUser = dataset.users[u];
@@ -193,7 +195,45 @@ public class MultiThreadMPHAT {
 							g = new GammaDistribution(alpha, theta);
 							currUser.topicalPlatformPreference[k][p] = g.sample();
 						} else {
-							currUser.topicalPlatformPreference[k][p] = 0;
+							currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
+						}
+					}
+					// authority
+					g = new GammaDistribution(sigma, currUser.topicalInterests[k] / sigma);
+					currUser.authorities[k] = g.sample();
+					// hub
+					g = new GammaDistribution(delta, currUser.topicalInterests[k] / delta);
+					currUser.hubs[k] = g.sample();
+				}
+			}
+		}
+
+		private void gibbsInitAuthorityHubPlatformPreference(int startIndex, int endIndex) {
+			// NormalDistribution g;
+			for (int u = startIndex; u < endIndex; u++) {
+				User currUser = dataset.users[u];
+				double min = Double.POSITIVE_INFINITY;
+				for (int k = 0; k < nTopics; k++) {
+					if (min > currUser.topicalInterests[k]) {
+						min = currUser.topicalInterests[k];
+					}
+				}
+
+				double norm = 1 / min + 0.1;
+
+				for (int k = 0; k < nTopics; k++) {
+					currUser.topicalInterests[k] = Math.log(currUser.topicalInterests[k] * norm);
+				}
+
+				for (int k = 0; k < nTopics; k++) {
+					GammaDistribution g;
+					// preference
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						if (currUser.platforms[p] == 1) {
+							g = new GammaDistribution(alpha, theta);
+							currUser.topicalPlatformPreference[k][p] = g.sample();
+						} else {
+							currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
 						}
 					}
 					// authority
@@ -371,6 +411,9 @@ public class MultiThreadMPHAT {
 					}
 					// platform preference prior
 					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						if (currUser.platforms[p] == 0) {
+							continue;
+						}
 						linkPlatformLikelihood += (alpha - 1) * Math.log(currUser.topicalPlatformPreference[k][p])
 								- (currUser.topicalPlatformPreference[k][p] / theta);
 						if (Double.isInfinite(linkPlatformLikelihood) || Double.isNaN(linkPlatformLikelihood)) {
@@ -389,6 +432,9 @@ public class MultiThreadMPHAT {
 				topicDenominator += Math.exp(currUser.topicalInterests[k]);
 				platformDenominators[k] = 0;
 				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					if (currUser.platforms[p] == 0) {
+						continue;
+					}
 					platformDenominators[k] += Math.exp(currUser.topicalPlatformPreference[k][p]);
 				}
 				platformDenominators[k] = Math.log(platformDenominators[k]);
@@ -620,6 +666,9 @@ public class MultiThreadMPHAT {
 				}
 				// platform prior
 				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					if (currUser.platforms[p] == 0) {
+						continue;
+					}
 					linkPlatformLikelihood += (alpha - 1) * Math.log(currUser.topicalPlatformPreference[k][p])
 							- (currUser.topicalPlatformPreference[k][p] / theta);
 					if (Double.isInfinite(linkPlatformLikelihood) || Double.isNaN(linkPlatformLikelihood)) {
@@ -637,6 +686,9 @@ public class MultiThreadMPHAT {
 			topicDenominator += Math.exp(currUser.topicalInterests[k]);
 			platformDenominators[k] = 0;
 			for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+				if (currUser.platforms[p] == 0) {
+					continue;
+				}
 				platformDenominators[k] += Math.exp(currUser.topicalPlatformPreference[k][p]);
 			}
 			platformDenominators[k] = Math.log(platformDenominators[k]);
@@ -844,7 +896,6 @@ public class MultiThreadMPHAT {
 
 	}
 
-	
 	/***
 	 * alternating step to optimize topical interest of u
 	 * 
@@ -914,7 +965,6 @@ public class MultiThreadMPHAT {
 		}
 	}
 
-	
 	/***
 	 * compute likelihood of data as a function of authority of u when the
 	 * authority is x, i.e., if L(data|parameters) = f(A_u) + const-of-A_u then
@@ -1592,6 +1642,9 @@ public class MultiThreadMPHAT {
 		// Third term in eqn 28. Compute post likelihood.
 		double denominator = 0;
 		for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+			if (currUser.platforms[p] == 0) {
+				continue;
+			}
 			denominator += Math.exp(x[p]);
 			if (usePrior) {
 				// Fourth term in eqn 28. Compute platform likelihood.
@@ -1610,7 +1663,7 @@ public class MultiThreadMPHAT {
 		}
 
 		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
-		// likelihood = postLikelihood;
+		// likelihood = platformLikelihood;
 
 		return likelihood;
 	}
@@ -1808,6 +1861,9 @@ public class MultiThreadMPHAT {
 
 		temp = Math.exp(x);
 		for (int t = 0; t < Configure.NUM_OF_PLATFORM; t++) {
+			if (currUser.platforms[t] == 0) {
+				continue;
+			}
 			if (p == t) {
 				// thirdSubTerm += Math.exp(x);
 				thirdSubTerm += temp;
@@ -1837,7 +1893,7 @@ public class MultiThreadMPHAT {
 		}
 
 		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
-		// likelihood = postLikelihood;
+		// likelihood = platformLikelihood;
 
 		return likelihood;
 
@@ -1864,7 +1920,11 @@ public class MultiThreadMPHAT {
 		for (int iter = 0; iter < maxIteration_platformPreference; iter++) {
 			// compute gradient
 			for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-				grad[p] = 0 - gradLikelihood_platformPreference(u, k, p, currentX[p]);
+				if (dataset.users[u].platforms[p] == 0) {
+					grad[p] = 0;
+				} else {
+					grad[p] = 0 - gradLikelihood_platformPreference(u, k, p, currentX[p]);
+				}
 			}
 
 			// start line search
@@ -1873,7 +1933,14 @@ public class MultiThreadMPHAT {
 			for (int lineSearchIter = 0; lineSearchIter < lineSearch_MaxIterations; lineSearchIter++) {
 				// find new x
 				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-					x[p] = currentX[p] - lineSearch_lambda * grad[p];
+					if (dataset.users[u].platforms[p] == 0) {
+						x[p] = Double.NEGATIVE_INFINITY;
+					} else {
+						x[p] = currentX[p] - lineSearch_lambda * grad[p];
+						if (x[p] < epsilon) {
+							x[p] = epsilon;
+						}
+					}
 				}
 				// compute f at the new x
 				f = 0 - getLikelihood_platformPreference(u, k, x);
@@ -2125,6 +2192,11 @@ public class MultiThreadMPHAT {
 	 * @param k
 	 */
 	public void gradCheck_PlatformPreference(int u, int k, int p) {
+		if (dataset.users[u].platforms[p] == 0) {
+			System.out.printf("user %d is not active on platform %d\n", u, p);
+			System.exit(-1);
+		}
+
 		double DELTA = 1;
 
 		double[] x = new double[Configure.NUM_OF_PLATFORM];
@@ -2278,7 +2350,6 @@ public class MultiThreadMPHAT {
 				for (int n = 0; n < dataset.users[u].nPosts; n++) {
 					if (dataset.users[u].postBatches[n] == batch) {
 						samplePostTopic_Gibbs(u, n);
-
 					}
 				}
 			}
@@ -2389,21 +2460,32 @@ public class MultiThreadMPHAT {
 		if (initByTopicModeling) {
 			// initialize by topic modeling
 			gibbsInit();
+			// init users' interest, platform preference, authority, and hub
+			executor = Executors.newFixedThreadPool(nParallelThreads);
+			for (int i = 0; i < nParallelThreads; i++) {
+				Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "gibbsInitUser");
+				executor.execute(worker);
+			}
+			executor.shutdown();
+			while (!executor.isTerminated()) {
+				// do nothing, just wait for the threads to finish
+			}
+
 		} else {
 			// initialize by alternating optimizing
 			altOptimize_topics();
+			// init users' interest, platform preference, authority, and hub
+			executor = Executors.newFixedThreadPool(nParallelThreads);
+			for (int i = 0; i < nParallelThreads; i++) {
+				Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "randomInitUser");
+				executor.execute(worker);
+			}
+			executor.shutdown();
+			while (!executor.isTerminated()) {
+				// do nothing, just wait for the threads to finish
+			}
 		}
 
-		// init users' interest, platform preference, authority, and hub
-		executor = Executors.newFixedThreadPool(nParallelThreads);
-		for (int i = 0; i < nParallelThreads; i++) {
-			Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "initUser");
-			executor.execute(worker);
-		}
-		executor.shutdown();
-		while (!executor.isTerminated()) {
-			// do nothing, just wait for the threads to finish
-		}
 	}
 
 	public void altCheck_TopicalInterest(int u) {
@@ -2688,7 +2770,7 @@ public class MultiThreadMPHAT {
 	}
 
 	public static void main(String[] args) {
-		String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
+		String datasetPath = "E:/code/java/MP-HAT/mp-hat/output/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		int nTopics = 10;
@@ -2709,6 +2791,7 @@ public class MultiThreadMPHAT {
 
 		// initByTopicModeling = true;
 
+		// u = 1;
 		// model.altCheck_TopicalInterest(u);
 		// model.altCheck_Authority(u);
 		// model.altCheck_Hub(u);

@@ -13,9 +13,15 @@ import tool.MathTool;
 import tool.Vector;
 
 public class CompareWithGroundTruth {
+
+	private boolean checkTopic = true;
+	private boolean userInterest = true;
+	private boolean userAuthority = false;
+	private boolean userHub = false;
+	private boolean userPlatformPreference = false;
+
 	private String groundtruthPath;
 	private String learntPath;
-	private int model;
 	private String distance;
 	private String outputPath;
 
@@ -45,91 +51,101 @@ public class CompareWithGroundTruth {
 	private int[] lgMatch;
 	private double[][] topicDistance;
 
-	public CompareWithGroundTruth(String _groundtruthPath, String _learntPath, int _model, String _distance,
-			String _outputPath) {
+	public CompareWithGroundTruth(String _groundtruthPath, String _learntPath, String _distance, String _outputPath) {
 		groundtruthPath = _groundtruthPath;
 		learntPath = _learntPath;
-		model = _model;
 		distance = _distance;
 		outputPath = _outputPath;
 	}
 
 	private void getGroundTruth() {
 		try {
+			String filename;
+			BufferedReader br;
+			String line = null;
 			// Topics Words Distributions
-			String filename = String.format("%s/g_TopicalWordDistributions.csv", groundtruthPath);
-			BufferedReader br = new BufferedReader(new FileReader(filename));
-			nTopics = 1;
-			String line = br.readLine();
-			nWords = line.split(",").length - 1;
-			while ((line = br.readLine()) != null) {
-				nTopics++;
-			}
-			br.close();
+			if (checkTopic) {
+				filename = String.format("%s/topicWordDistributions.csv", groundtruthPath);
+				br = new BufferedReader(new FileReader(filename));
+				nTopics = 1;
+				line = br.readLine();
+				nWords = line.split(",").length - 1;
+				while ((line = br.readLine()) != null) {
+					nTopics++;
+				}
+				br.close();
 
-			g_topicWordDistributions = new double[nTopics][nWords];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				int t = Integer.parseInt(tokens[0]);
-				for (int i = 1; i < tokens.length; i++) {
-					g_topicWordDistributions[t][i - 1] = Double.parseDouble(tokens[i]);
+				g_topicWordDistributions = new double[nTopics][nWords];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					int t = Integer.parseInt(tokens[0]);
+					for (int i = 1; i < tokens.length; i++) {
+						g_topicWordDistributions[t][i - 1] = Double.parseDouble(tokens[i]);
+					}
 				}
+				br.close();
 			}
-			br.close();
-			
-			
+
 			// User Topic Interest Distributions
-			filename = String.format("%s/g_userTopicInterestDistributions.csv", groundtruthPath);
-			br = new BufferedReader(new FileReader(filename));
-			nUsers = 0;
-			line = null;
-			while ((line = br.readLine()) != null) {
-				nUsers++;
-			}
-			br.close();
-			userId2Index = new HashMap<String, Integer>();
-			g_userTopicInterestDistributions = new double[nUsers][nTopics];
-			br = new BufferedReader(new FileReader(filename));
-			int u = 0;
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				userId2Index.put(tokens[0], u);
-				for (int t = 1; t < tokens.length; t++) {
-					g_userTopicInterestDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+			if (userInterest) {
+				filename = String.format("%s/userLatentFactors.csv", groundtruthPath);
+				br = new BufferedReader(new FileReader(filename));
+				nUsers = 0;
+				line = null;
+				while ((line = br.readLine()) != null) {
+					nUsers++;
 				}
-				u++;
+				br.close();
+				userId2Index = new HashMap<String, Integer>();
+				g_userTopicInterestDistributions = new double[nUsers][nTopics];
+				br = new BufferedReader(new FileReader(filename));
+				int u = 0;
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					userId2Index.put(tokens[0], u);
+					for (int t = 1; t < tokens.length; t++) {
+						g_userTopicInterestDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+					}
+					u++;
+				}
+				br.close();
 			}
-			br.close();
+
 			// User Authority Distributions
-			filename = String.format("%s/g_userAuthorityDistributions.csv", groundtruthPath);
-			g_userAuthorityDistributions = new double[nUsers][nTopics];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				u = userId2Index.get(tokens[0]);
-				for (int t = 1; t < tokens.length; t++) {
-					g_userAuthorityDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+			if (userAuthority) {
+				filename = String.format("%s/g_userAuthorityDistributions.csv", groundtruthPath);
+				g_userAuthorityDistributions = new double[nUsers][nTopics];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					int u = userId2Index.get(tokens[0]);
+					for (int t = 1; t < tokens.length; t++) {
+						g_userAuthorityDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+					}
 				}
+				br.close();
 			}
-			br.close();
+
 			// User Hub Distributions
-			filename = String.format("%s/g_userHubDistributions.csv", groundtruthPath);
-			g_userHubDistributions = new double[nUsers][nTopics];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				u = userId2Index.get(tokens[0]);
-				for (int t = 1; t < tokens.length; t++) {
-					g_userHubDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+			if (userHub) {
+				filename = String.format("%s/g_userHubDistributions.csv", groundtruthPath);
+				g_userHubDistributions = new double[nUsers][nTopics];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					int u = userId2Index.get(tokens[0]);
+					for (int t = 1; t < tokens.length; t++) {
+						g_userHubDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+					}
 				}
+				br.close();
 			}
-			br.close();
-		
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -139,70 +155,83 @@ public class CompareWithGroundTruth {
 	private void getLearntParams() {
 		try {
 			// Topics Words Distributions
-			String filename = String.format("%s/l_topicalWordDistributions.csv", learntPath);
-			BufferedReader br = new BufferedReader(new FileReader(filename));
-			nTopics = 1;
-			String line = br.readLine();
-			nWords = line.split(",").length - 1;
-			while ((line = br.readLine()) != null) {
-				nTopics++;
-			}
-			br.close();
+			String filename;
+			BufferedReader br;
+			String line = null;
 
-			l_topicWordDistributions = new double[nTopics][nWords];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				int t = Integer.parseInt(tokens[0]);
-				for (int i = 1; i < tokens.length; i++) {
-					l_topicWordDistributions[t][i - 1] = Double.parseDouble(tokens[i]);
+			if (checkTopic) {
+				filename = String.format("%s/l_topicalWordDistributions.csv", learntPath);
+				br = new BufferedReader(new FileReader(filename));
+				nTopics = 1;
+				line = br.readLine();
+				nWords = line.split(",").length - 1;
+				while ((line = br.readLine()) != null) {
+					nTopics++;
 				}
+				br.close();
+
+				l_topicWordDistributions = new double[nTopics][nWords];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					int t = Integer.parseInt(tokens[0]);
+					for (int i = 1; i < tokens.length; i++) {
+						l_topicWordDistributions[t][i - 1] = Double.parseDouble(tokens[i]);
+					}
+				}
+				br.close();
 			}
-			br.close();
-			
+
 			// User Topic Interest Distributions
-			filename = String.format("%s/l_userTopicalInterestDistributions.csv", learntPath);
-			// br = new BufferedReader(new FileReader(filename));
-			l_userTopicInterestDistributions = new double[nUsers][nTopics];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			int u = 0;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				u = userId2Index.get(tokens[0]);
-				for (int t = 1; t < tokens.length; t++) {
-					l_userTopicInterestDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+			if (userInterest) {
+				filename = String.format("%s/l_userTopicalInterestDistributions.csv", learntPath);
+				// br = new BufferedReader(new FileReader(filename));
+				l_userTopicInterestDistributions = new double[nUsers][nTopics];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				int u = 0;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					u = userId2Index.get(tokens[0]);
+					for (int t = 1; t < tokens.length; t++) {
+						l_userTopicInterestDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+					}
 				}
+				br.close();
 			}
-			br.close();
+
 			// User Authority Distributions
-			filename = String.format("%s/l_userAuthorityDistributions.csv", learntPath);
-			l_userAuthorityDistributions = new double[nUsers][nTopics];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				u = userId2Index.get(tokens[0]);
-				for (int t = 1; t < tokens.length; t++) {
-					l_userAuthorityDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+			if (userAuthority) {
+				filename = String.format("%s/l_userAuthorityDistributions.csv", learntPath);
+				l_userAuthorityDistributions = new double[nUsers][nTopics];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					int u = userId2Index.get(tokens[0]);
+					for (int t = 1; t < tokens.length; t++) {
+						l_userAuthorityDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+					}
 				}
+				br.close();
 			}
-			br.close();
+
 			// User Hub Distributions
-			filename = String.format("%s/l_userHubDistributions.csv", learntPath);
-			l_userHubDistributions = new double[nUsers][nTopics];
-			br = new BufferedReader(new FileReader(filename));
-			line = null;
-			while ((line = br.readLine()) != null) {
-				String[] tokens = line.split(",");
-				u = userId2Index.get(tokens[0]);
-				for (int t = 1; t < tokens.length; t++) {
-					l_userHubDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+			if (userHub) {
+				filename = String.format("%s/l_userHubDistributions.csv", learntPath);
+				l_userHubDistributions = new double[nUsers][nTopics];
+				br = new BufferedReader(new FileReader(filename));
+				line = null;
+				while ((line = br.readLine()) != null) {
+					String[] tokens = line.split(",");
+					int u = userId2Index.get(tokens[0]);
+					for (int t = 1; t < tokens.length; t++) {
+						l_userHubDistributions[u][t - 1] = Double.parseDouble(tokens[t]);
+					}
 				}
+				br.close();
 			}
-			br.close();
-			
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -270,6 +299,7 @@ public class CompareWithGroundTruth {
 
 			System.out.println("matching topics");
 			topicMatching();
+
 			String filename = String.format("%s/topicDistance.csv", outputPath);
 			BufferedWriter bw = new BufferedWriter(new FileWriter(filename));
 			for (int t = 0; t < nTopics; t++) {
@@ -277,7 +307,6 @@ public class CompareWithGroundTruth {
 			}
 			bw.close();
 
-			
 			System.out.println("measuring user topic interest distribution distance");
 			Vector vector = new Vector();
 			filename = String.format("%s/userTopicInterestDistance.csv", outputPath);
@@ -298,7 +327,9 @@ public class CompareWithGroundTruth {
 				}
 			}
 			bw.close();
-	
+
+			System.exit(-1);
+
 			System.out.println("measuring user authority distribution distance");
 			vector = new Vector();
 			filename = String.format("%s/userAuthorityDistance.csv", outputPath);
@@ -367,7 +398,7 @@ public class CompareWithGroundTruth {
 				}
 			}
 			bw.close();
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -376,8 +407,14 @@ public class CompareWithGroundTruth {
 	}
 
 	public static void main(String[] args) {
-		CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/users/roylee.2013/Chardonnay/synthetic/groundtruth",
-				"E:/users/roylee.2013/Chardonnay/synthetic/data/10", 1, "euclidean", "E:/users/roylee.2013/Chardonnay/synthetic/evaluation");
+		// CompareWithGroundTruth comparator = new
+		// CompareWithGroundTruth("E:/users/roylee.2013/Chardonnay/synthetic/groundtruth",
+		// "E:/users/roylee.2013/Chardonnay/synthetic/data/10", "euclidean",
+		// "E:/users/roylee.2013/Chardonnay/synthetic/evaluation");
+
+		CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/output/syn_data",
+				"E:/code/java/MP-HAT/mp-hat/output/syn_data/10", "euclidean",
+				"E:/code/java/MP-HAT/mp-hat/output/syn_data/10/evaluation");
 		comparator.measureGoodness();
 	}
 
