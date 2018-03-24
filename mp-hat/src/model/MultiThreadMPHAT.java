@@ -2770,9 +2770,8 @@ public class MultiThreadMPHAT {
 	}
 
 	public static void main(String[] args) {
-		String datasetPath = "E:/code/java/MP-HAT/mp-hat/output/syn_data/";
-		// String datasetPath =
-		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
+		//String datasetPath = "E:/code/java/MP-HAT/mp-hat/output/syn_data/";
+		String datasetPath = "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		int nTopics = 10;
 		int batch = 1;
 

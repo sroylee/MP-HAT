@@ -458,9 +458,10 @@ public class Synthetic {
 
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
-		generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output/syn_data");
-		// generator.genData(1000, 2, 10, 1000,
-		// "E:/users/roylee.2013/Chardonnay/synthetic");
+		//generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output/syn_data");
+		//generator.genData(1000, 2, 10, 1000, "E:/users/roylee.2013/Chardonnay/synthetic");
+		generator.genData(1000, 2, 10, 1000, "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
+		
 		System.out.printf("%f", Math.exp(Double.NEGATIVE_INFINITY));
 	}
 }
