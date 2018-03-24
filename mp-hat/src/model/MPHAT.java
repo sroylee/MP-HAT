@@ -3,9 +3,7 @@ package model;
 import tool.*;
 
 import java.io.BufferedWriter;
-import java.util.Arrays;
 import java.util.Random;
-import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import java.io.File;
 import java.io.FileWriter;
@@ -246,8 +244,7 @@ public class MPHAT {
 				}
 			}
 
-			linkLikelihood += linkRelationshipLikelihood + linkAuthorityLikelihood + linkHubLikelihood
-					+ postPlatformLikelihood;
+			
 
 			for (int s = 0; s < currUser.nPosts; s++) {
 				if (currUser.postBatches[s] == batch) {
@@ -300,6 +297,9 @@ public class MPHAT {
 
 		postLikelihood = postWordLikelihood + postPlatformLikelihood + postTopicLikelihood + postXLikelihood
 				+ postEtaLikelihood + postTauLikelihood;
+		
+		linkLikelihood += linkRelationshipLikelihood + linkAuthorityLikelihood + linkHubLikelihood
+				+ postPlatformLikelihood;
 
 		if (Double.isInfinite(linkLikelihood) || Double.isInfinite(postLikelihood)) {
 			System.exit(-1);
@@ -1305,13 +1305,15 @@ public class MPHAT {
 		// the topical platform preferences is a 2D array
 
 		double[] grad = new double[Configure.NUM_OF_PLATFORM];
-		double[] currentX = new double[Configure.NUM_OF_PLATFORM];
+		//double[] currentX = new double[Configure.NUM_OF_PLATFORM];
 		double[] x = new double[Configure.NUM_OF_PLATFORM];
 
 		// get the currentX
-		for (int i = 0; i < dataset.users[u].topicalPlatformPreference[k].length; i++) {
-			currentX[i] = dataset.users[u].topicalPlatformPreference[k][i];
-		}
+		//for (int i = 0; i < dataset.users[u].topicalPlatformPreference[k].length; i++) {
+		//	currentX[i] = dataset.users[u].topicalPlatformPreference[k][i];
+		//}
+		
+		double[] currentX = dataset.users[u].topicalPlatformPreference[k];
 
 		double currentF = 0 - getLikelihood_platformPreference(u, k, currentX);
 
@@ -1971,6 +1973,7 @@ public class MPHAT {
 					optTopicWordDist = topicWordDist;
 					// set optimized user topical interest, authority and hub
 					for (int u = 0; u < dataset.nUsers; u++) {
+						//This one need to run one by one
 						User currUser = dataset.users[u];
 						currUser.optTopicalInterests = currUser.topicalInterests;
 						currUser.optAuthorities = currUser.authorities;

@@ -9,6 +9,7 @@ public class RankingTool {
 	static {
 		ascName = new Comparator<WeightedElement>() {
 			//@Override
+			@Override
 			public int compare(WeightedElement e1, WeightedElement e2) {
 				return e1.getName().compareTo(e2.getName());
 			}
@@ -16,6 +17,7 @@ public class RankingTool {
 
 		descWeight = new Comparator<WeightedElement>() {
 			//@Override
+			@Override
 			public int compare(WeightedElement e1, WeightedElement e2) {
 				if (e2.getWeight() - e1.getWeight() > 0)
 					return 1;

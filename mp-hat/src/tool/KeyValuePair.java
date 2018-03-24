@@ -52,6 +52,7 @@ public class KeyValuePair implements Comparable<KeyValuePair> {
 		return strValue;
 	}
 
+	@Override
 	public int compareTo(KeyValuePair o) {
 		if (valueType == ValueType.doubleType) {
 			if (o.getDoubleValue() > doubleValue)
