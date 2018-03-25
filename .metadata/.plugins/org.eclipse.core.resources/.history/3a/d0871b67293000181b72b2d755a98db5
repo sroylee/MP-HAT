@@ -227,8 +227,6 @@ public class MultiThreadMPHAT {
 				}
 				
 				if (InitPlatformPreferenceByTopicModeling){
-					
-					
 					min = Double.POSITIVE_INFINITY;
 					for (int k = 0; k < nTopics; k++) {
 						if (min > currUser.topicalInterests[k]) {
@@ -2535,11 +2533,6 @@ public class MultiThreadMPHAT {
 		if (initByTopicModeling) {
 			// initialize by topic modeling
 			gibbsInit();
-			
-			if (InitPlatformPreferenceByTopicModeling){
-				initPlatformPreferenceByTopicModeling();
-			}
-			
 			// init users' interest, platform preference, authority, and hub
 			executor = Executors.newFixedThreadPool(nParallelThreads);
 			for (int i = 0; i < nParallelThreads; i++) {
