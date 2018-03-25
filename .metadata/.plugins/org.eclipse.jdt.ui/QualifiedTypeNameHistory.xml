@@ -3,6 +3,6 @@
 <fullyQualifiedTypeName name="model.MPHAT"/>
 <fullyQualifiedTypeName name="org.apache.commons.math3.distribution.GammaDistribution"/>
 <fullyQualifiedTypeName name="java.lang.Math"/>
-<fullyQualifiedTypeName name="model.Configure"/>
 <fullyQualifiedTypeName name="tool.MathTool"/>
+<fullyQualifiedTypeName name="model.Configure"/>
 </qualifiedTypeNameHistroy>

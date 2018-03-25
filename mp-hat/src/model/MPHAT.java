@@ -1831,24 +1831,10 @@ public class MPHAT {
 			}
 		}
 
-		// randomly assign topics to posts
-		for (int u = 0; u < dataset.nUsers; u++) {
-			initPostTopic(u);
-//			User currUser = dataset.users[u];
-//			for (int n = 0; n < currUser.posts.length; n++) {
-//				// only consider posts in batch
-//				if (currUser.postBatches[n] == batch) {
-//					int randTopic = rand.nextInt(nTopics);
-//					currUser.posts[n].topic = randTopic;
-//					sum_nzu[u] += 1;
-//					n_zu[randTopic][u] += 1;
-//				}
-//			}
-		}
-
 		if (initByTopicModeling) {
 			// initialize by topic modeling
 			gibbsInit();
+			
 		} else {
 			// topics
 			altOptimize_topics();
@@ -1870,38 +1856,50 @@ public class MPHAT {
 				}
 			}
 		}
-
+		
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
+			if (initByTopicModeling){
+				double min = Double.POSITIVE_INFINITY;
+				for (int k = 0; k < nTopics; k++) {
+					if (min > currUser.topicalInterests[k]) {
+						min = currUser.topicalInterests[k];
+					}
+				}
+
+				double norm = 1 / min + 0.1;
+
+				for (int k = 0; k < nTopics; k++) {
+					currUser.topicalInterests[k] = Math.log(currUser.topicalInterests[k] * norm);
+				}
+			} else {
+				for (int k = 0; k < nTopics; k++) {
+					GammaDistribution g = new GammaDistribution(kappa, theta);
+					currUser.topicalInterests[k] = g.sample();
+				}
+				altOptimize_topics();
+			}
+			
+
 			for (int k = 0; k < nTopics; k++) {
-				GammaDistribution g = new GammaDistribution(kappa, theta);
-				currUser.topicalInterests[k] = g.sample();
+				GammaDistribution g;
+				// preference
 				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 					if (currUser.platforms[p] == 1) {
 						g = new GammaDistribution(alpha, theta);
 						currUser.topicalPlatformPreference[k][p] = g.sample();
 					} else {
-						currUser.topicalPlatformPreference[k][p] = 0;
+						currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
 					}
 				}
-			}
-		}
-
-		// randomly regress user's topical interest to initialize authority and
-		// hub
-		for (int u = 0; u < dataset.nUsers; u++) {
-			User currUser = dataset.users[u];
-			for (int k = 0; k < nTopics; k++) {
-				GammaDistribution g = new GammaDistribution(sigma, currUser.topicalInterests[k] / sigma);
+				// authority
+				g = new GammaDistribution(sigma, currUser.topicalInterests[k] / sigma);
 				currUser.authorities[k] = g.sample();
+				// hub
 				g = new GammaDistribution(delta, currUser.topicalInterests[k] / delta);
 				currUser.hubs[k] = g.sample();
 			}
 		}
-
-		// compute topic words distribution base on the random topic assignment
-		// altOptimize_topics();
-
 	}
 
 	public void altCheck_TopicalInterest(int u) {
@@ -1925,6 +1923,25 @@ public class MPHAT {
 	 */
 	public void train() {
 		init();
+		if (onlyLearnGibbs) {
+			// TopicWordsDist
+			for (int z = 0; z < nTopics; z++) {
+				for (int w = 0; w < dataset.vocabulary.length; w++)
+					optTopicWordDist[z][w] = topicWordDist[z][w];
+			}
+
+			// UserTopicalInterest
+			for (int u = 0; u < dataset.nUsers; u++) {
+				for (int z = 0; z < nTopics; z++) {
+					dataset.users[u].optTopicalInterests[z] = dataset.users[u].topicalInterests[z];
+				}
+			}
+			output_topicWord();
+			output_topicInterest();
+			outputPostTopicTopWords(20);
+			return;
+		}
+		
 		double maxLikelihood = 0;
 		double currentLikelihood = 0;
 		System.out.println("Datapath:" + this.datapath);
@@ -1973,12 +1990,15 @@ public class MPHAT {
 					optTopicWordDist = topicWordDist;
 					// set optimized user topical interest, authority and hub
 					for (int u = 0; u < dataset.nUsers; u++) {
-						//This one need to run one by one
 						User currUser = dataset.users[u];
-						currUser.optTopicalInterests = currUser.topicalInterests;
-						currUser.optAuthorities = currUser.authorities;
-						currUser.optHubs = currUser.hubs;
-						currUser.optTopicalPlatformPreference = currUser.topicalPlatformPreference;
+						for (int z = 0; z < nTopics; z++) {
+							currUser.optTopicalInterests[z] = currUser.topicalInterests[z];
+							currUser.optAuthorities[z] = currUser.authorities[z];
+							currUser.optHubs[z] = currUser.hubs[z];
+							for (int p=0;p < Configure.NUM_OF_PLATFORM; p ++){
+								currUser.optTopicalPlatformPreference[z][p] = currUser.topicalPlatformPreference[z][p];
+							}	
+						}
 					}
 				}
 			}

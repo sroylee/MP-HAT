@@ -2,29 +2,29 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="for (int i = 0; i &lt; dataset.users[u].topicalPlatformPreference[k].length; i++)" key="selection"/>
+		<item value="userPlatformPreference" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
-			<item value="for (int i = 0; i &lt; dataset.users[u].topicalPlatformPreference[k].length; i++)"/>
+			<item value="userPlatformPreference"/>
+			<item value="gibbsInitAuthorityHubPlatformPreference"/>
+			<item value="gibbsInitUser"/>
+			<item value="output_topicWord"/>
+			<item value="initPostTopic"/>
+			<item value="initUserPostTopic"/>
 			<item value="gibbsInit"/>
-			<item value="Gibb Iteration:"/>
-			<item value="currPost.wordTopics"/>
-			<item value="model"/>
-			<item value="getLikelihood("/>
-			<item value="getLikelihood"/>
-			<item value="alt_hub"/>
+			<item value="gibbs_Sampling_Gap"/>
 		</list>
 		<list key="replacehistory">
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
-		<item value="265" key="DIALOG_WIDTH"/>
-		<item value="1|.SF NS Text|11.0|0|COCOA|1|.SFNSText" key="DIALOG_FONT_NAME"/>
-		<item value="399" key="DIALOG_HEIGHT"/>
-		<item value="1120" key="DIALOG_X_ORIGIN"/>
-		<item value="220" key="DIALOG_Y_ORIGIN"/>
+		<item value="237" key="DIALOG_WIDTH"/>
+		<item value="1|Tahoma|8.25|0|WINDOWS|1|-11|0|0|0|400|0|0|0|1|0|0|0|0|Tahoma" key="DIALOG_FONT_NAME"/>
+		<item value="357" key="DIALOG_HEIGHT"/>
+		<item value="1492" key="DIALOG_X_ORIGIN"/>
+		<item value="263" key="DIALOG_Y_ORIGIN"/>
 	</section>
 </section>
