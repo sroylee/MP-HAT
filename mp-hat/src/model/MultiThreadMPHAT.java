@@ -26,12 +26,12 @@ public class MultiThreadMPHAT {
 
 	private static boolean initByTopicModeling = true;
 	private static boolean InitPlatformPreferenceByTopicModeling = false;
-	private static boolean onlyLearnAuthorityHub = false;
-	private static boolean onlyLearnGibbs = true;
+	private static boolean onlyLearnAuthorityHub = true;
+	private static boolean onlyLearnGibbs = false;
 	private static boolean usePrior = true;
 
 	public static int gibbs_BurningPeriods = 50;
-	public static int max_Gibbs_Iterations = 500; //200
+	public static int max_Gibbs_Iterations = 200; //200
 	public static int gibbs_Sampling_Gap = 10; //10
 
 	// priors

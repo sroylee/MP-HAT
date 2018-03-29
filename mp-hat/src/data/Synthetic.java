@@ -26,14 +26,14 @@ public class Synthetic {
 	private double userSkewness = 0.1;// together with mass, this means, for
 										// each user, 90% of her posts are about
 										// 10% of topics
-	private double topicSkewness = 0.01;// similarly, each topic focuses on 1%
+	private double topicSkewness = 0.001;// similarly, each topic focuses on 0.1%
 										// of words whose probabilities summing
 										// up to 90%
 	private double singlePlatformProp = 0.3;
 	private double platformSkeness;
 
-	private int minNPosts = 300;
-	private int maxNPosts = 500;
+	private int minNPosts = 100;
+	private int maxNPosts = 200;
 
 	private int minNWords = 10;
 	private int maxNWords = 20;
@@ -459,7 +459,7 @@ public class Synthetic {
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		//generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output/syn_data");
-		generator.genData(1000, 2, 10, 1000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
+		generator.genData(100, 2, 10, 10000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
 		//generator.genData(1000, 2, 10, 1000, "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
 		
 		System.out.printf("%f", Math.exp(Double.NEGATIVE_INFINITY));

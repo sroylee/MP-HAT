@@ -16,8 +16,8 @@ public class CompareWithGroundTruth {
 
 	private boolean checkTopic = true;
 	private boolean userInterest = true;
-	private boolean userAuthority = false;
-	private boolean userHub = false;
+	private boolean userAuthority = true;
+	private boolean userHub = true;
 	private boolean userPlatformPreference = false;
 
 	private String groundtruthPath;

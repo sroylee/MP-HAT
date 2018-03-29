@@ -2,12 +2,13 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="gibbsInitAuthorityHubPlatformPreference" key="selection"/>
+		<item value="epsilon" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="epsilon"/>
 			<item value="gibbsInitAuthorityHubPlatformPreference"/>
 			<item value="gibbsInitUser"/>
 			<item value="InitPlatformPreferenceByTopicModeling"/>
@@ -15,7 +16,6 @@
 			<item value="output_topicWord"/>
 			<item value="initPostTopic"/>
 			<item value="initUserPostTopic"/>
-			<item value="gibbsInit"/>
 		</list>
 		<list key="replacehistory">
 		</list>
