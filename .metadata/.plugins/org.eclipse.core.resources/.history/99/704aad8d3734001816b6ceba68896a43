@@ -46,7 +46,7 @@ public class Synthetic {
 	public double sigma = 2;
 	public double delta = 2;
 
-	private Random rand = new Random(1);
+	private Random rand = new Random();
 
 	private double lambda = 0.01;
 

@@ -24,7 +24,7 @@ public class MultiThreadMPHAT {
 	public static int nTopics;
 	public static int batch;
 
-	private static boolean initByTopicModeling = false;
+	private static boolean initByTopicModeling = true;
 	private static boolean InitPlatformPreferenceByTopicModeling = false;
 	private static boolean onlyLearnAuthorityHub = false;
 	private static boolean onlyLearnGibbs = false;
@@ -2489,7 +2489,7 @@ public class MultiThreadMPHAT {
 		alpha = 2.0;// shape parameter of user platform preference vector
 		theta = 2.0;// scale parameter of user interests/platform preference
 		// vectors
-		rand = new Random(1);
+		rand = new Random();
 
 		// allocate memory for counts
 		n_zu = new int[nTopics][dataset.nUsers];

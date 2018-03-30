@@ -24,9 +24,9 @@ public class MultiThreadMPHAT {
 	public static int nTopics;
 	public static int batch;
 
-	private static boolean initByTopicModeling = false;
+	private static boolean initByTopicModeling = true;
 	private static boolean InitPlatformPreferenceByTopicModeling = false;
-	private static boolean onlyLearnAuthorityHub = false;
+	private static boolean onlyLearnAuthorityHub = true;
 	private static boolean onlyLearnGibbs = false;
 	private static boolean usePrior = true;
 
@@ -2489,7 +2489,7 @@ public class MultiThreadMPHAT {
 		alpha = 2.0;// shape parameter of user platform preference vector
 		theta = 2.0;// scale parameter of user interests/platform preference
 		// vectors
-		rand = new Random(1);
+		rand = new Random();
 
 		// allocate memory for counts
 		n_zu = new int[nTopics][dataset.nUsers];
@@ -2794,8 +2794,9 @@ public class MultiThreadMPHAT {
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
+				String text = currUser.userId;
 				for (int k = 0; k < nTopics; k++) {
-					String text = currUser.userId + "," + k;
+					text = text + "," + k;
 					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 						text = text + "," + Double.toString(currUser.optTopicalPlatformPreference[k][p]);
 					}

@@ -18,7 +18,7 @@ public class CompareWithGroundTruth {
 	private boolean userInterest = true;
 	private boolean userAuthority = true;
 	private boolean userHub = true;
-	private boolean userPlatformPreference = true;
+	private boolean userPlatformPreference = false;
 
 	private String groundtruthPath;
 	private String learntPath;
@@ -27,7 +27,7 @@ public class CompareWithGroundTruth {
 
 	private int nTopics;
 	private int nUsers;
-	private int nPlatforms =2;
+	private int nPlatforms;
 	private int nWords;
 
 	public HashMap<String, Integer> userId2Index;
@@ -146,24 +146,6 @@ public class CompareWithGroundTruth {
 				br.close();
 			}
 
-			// User Platform Preference
-			if (userPlatformPreference) {
-				filename = String.format("%s/userPlatformPreference.csv", groundtruthPath);
-				g_userPlatformPreferenceDistributions = new double[nUsers][nTopics][nPlatforms];
-				br = new BufferedReader(new FileReader(filename));
-				line = null;
-				while ((line = br.readLine()) != null) {
-					String[] tokens = line.split(",");
-					int u = userId2Index.get(tokens[0]);
-					int z = Integer.parseInt(tokens[1]);
-					for (int p = 2; p < tokens.length; p++) {
-						g_userPlatformPreferenceDistributions[u][z][p-2] = Double.parseDouble(tokens[p]);
-					}
-				}
-				br.close();
-			}				
-			
-
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -250,23 +232,6 @@ public class CompareWithGroundTruth {
 				}
 				br.close();
 			}
-
-			// User Platform Preference
-			if (userPlatformPreference) {
-				filename = String.format("%s/l_userTopicalPlatformPreferenceDistributions.csv", learntPath);
-				l_userPlatformPreferenceDistributions = new double[nUsers][nTopics][nPlatforms];
-				br = new BufferedReader(new FileReader(filename));
-				line = null;
-				while ((line = br.readLine()) != null) {
-					String[] tokens = line.split(",");
-					int u = userId2Index.get(tokens[0]);
-					int z = Integer.parseInt(tokens[1]);
-					for (int p = 2; p < tokens.length; p++) {
-						l_userPlatformPreferenceDistributions[u][z][p-2] = Double.parseDouble(tokens[p]);
-					}
-				}
-				br.close();
-			}	
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);

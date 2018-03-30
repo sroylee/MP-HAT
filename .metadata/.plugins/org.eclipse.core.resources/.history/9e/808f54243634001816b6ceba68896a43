@@ -27,7 +27,7 @@ public class CompareWithGroundTruth {
 
 	private int nTopics;
 	private int nUsers;
-	private int nPlatforms =2;
+	private int nPlatforms;
 	private int nWords;
 
 	public HashMap<String, Integer> userId2Index;
