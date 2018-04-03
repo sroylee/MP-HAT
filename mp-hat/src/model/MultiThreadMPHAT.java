@@ -24,15 +24,15 @@ public class MultiThreadMPHAT {
 	public static int nTopics;
 	public static int batch;
 
-	private static boolean initByTopicModeling = false;
-	private static boolean InitPlatformPreferenceByTopicModeling = false;
-	private static boolean onlyLearnAuthorityHub = false;
+	private static boolean initByTopicModeling = true;
+	private static boolean InitPlatformPreferenceByTopicModeling = true;
+	private static boolean onlyLearnAuthorityHub = true;
 	private static boolean onlyLearnGibbs = false;
 	private static boolean usePrior = true;
 
 	public static int gibbs_BurningPeriods = 50;
-	public static int max_Gibbs_Iterations = 200; //200
-	public static int gibbs_Sampling_Gap = 10; //10
+	public static int max_Gibbs_Iterations = 50; // 200
+	public static int gibbs_Sampling_Gap = 10; // 10
 
 	// priors
 	public static double alpha;// prior for users' platform preferences
@@ -225,28 +225,30 @@ public class MultiThreadMPHAT {
 				for (int k = 0; k < nTopics; k++) {
 					currUser.topicalInterests[k] = Math.log(currUser.topicalInterests[k] * norm);
 				}
-				
-				if (InitPlatformPreferenceByTopicModeling){
-					
-					
-					min = Double.POSITIVE_INFINITY;
-					for (int k = 0; k < nTopics; k++) {
-						if (min > currUser.topicalInterests[k]) {
-							min = currUser.topicalInterests[k];
-						}
-					}
-					
-					norm = 1 / min + 0.1;
+
+				if (InitPlatformPreferenceByTopicModeling) {
 
 					for (int k = 0; k < nTopics; k++) {
+						min = Double.POSITIVE_INFINITY;
+						for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+							if (min > currUser.topicalPlatformPreference[k][p]) {
+								min = currUser.topicalPlatformPreference[k][p];
+							}
+						}
+						norm = 1 / min + 0.1;
+
 						for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 							if (currUser.platforms[p] == 1) {
-								currUser.topicalPlatformPreference[k][p] = Math.log(currUser.topicalPlatformPreference[k][p] * norm);
+								currUser.topicalPlatformPreference[k][p] = Math
+										.log(currUser.topicalPlatformPreference[k][p] * norm);
 							} else {
 								currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
 							}
+							System.out.println(u + "," + k + "," + p + "," + currUser.topicalPlatformPreference[k][p]);
 						}
+
 					}
+
 				} else {
 					GammaDistribution g;
 					for (int k = 0; k < nTopics; k++) {
@@ -260,7 +262,6 @@ public class MultiThreadMPHAT {
 						}
 					}
 				}
-				
 
 				for (int k = 0; k < nTopics; k++) {
 					GammaDistribution g;
@@ -2429,53 +2430,67 @@ public class MultiThreadMPHAT {
 		}
 	}
 
-	private void initPlatformPreferenceByTopicModeling(){
-		//init counts for the topical platform preferences
+	private void initPlatformPreferenceByTopicModeling() {
+		// init counts for the topical platform preferences
 		int[][] userTopicPostCounts = new int[dataset.nUsers][nTopics];
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
-			for (int k=0; k<nTopics; k++){
-				userTopicPostCounts[u][k] =0;
-				for (int p=0; p<Configure.NUM_OF_PLATFORM; p++){
+			for (int k = 0; k < nTopics; k++) {
+				userTopicPostCounts[u][k] = 0;
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 					currUser.topicalPlatformPreference[k][p] = 0;
 				}
-			}	
+			}
 		}
-		
-		//update the topical platform count
+
+		// update the topical platform count
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
 			for (int n = 0; n < currUser.posts.length; n++) {
 				Post currPost = currUser.posts[n];
 				int z = currPost.topic;
 				int p = currPost.platform;
-				currUser.topicalPlatformPreference[z][p] += 1 ;
-				userTopicPostCounts[u][z] +=1;
+				currUser.topicalPlatformPreference[z][p] += 1;
+				userTopicPostCounts[u][z] += 1;
 			}
 		}
-		
-		//approximate user platform preference distribution
+
+		// approximate user platform preference distribution
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
-			for (int k=0; k<nTopics; k++){
-				if (userTopicPostCounts[u][k]!=0){
-					for (int p=0; p<Configure.NUM_OF_PLATFORM; p++){
-						currUser.topicalPlatformPreference[k][p] = currUser.topicalPlatformPreference[k][p]/userTopicPostCounts[u][k];
-						if (currUser.platforms[p]==1 && currUser.topicalPlatformPreference[k][p]==0){
+			for (int k = 0; k < nTopics; k++) {
+
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					if (currUser.platforms[p] == 1) {
+						if (userTopicPostCounts[u][k] == 0) {
 							currUser.topicalPlatformPreference[k][p] = epsilon;
+						} else {
+							currUser.topicalPlatformPreference[k][p] = currUser.topicalPlatformPreference[k][p]
+									/ userTopicPostCounts[u][k];
+							if (currUser.topicalPlatformPreference[k][p] <= 0) {
+								currUser.topicalPlatformPreference[k][p] = epsilon;
+							}
 						}
+					} else {
+						currUser.topicalPlatformPreference[k][p] = epsilon;
 					}
-				}	
+				}
 			}
 		}
-		
-		//approximate user platform preference vector
-		
-		
-		
+
+		// for (int u = 0; u < dataset.nUsers; u++) {
+		// User currUser = dataset.users[u];
+		// for (int k=0; k<nTopics; k++){
+		// for (int p=0; p<Configure.NUM_OF_PLATFORM; p++){
+		// System.out.println(u+","+k+","+p+","+currUser.topicalPlatformPreference[k][p]);
+		//
+		// }
+		//
+		// }
+		// }
+
 	}
-	
-	
+
 	/***
 	 * initialize the data before training
 	 */
@@ -2487,7 +2502,7 @@ public class MultiThreadMPHAT {
 		delta = 2.0;// shape parameter of users' hubs
 		kappa = 2.0;// shape parameter of user interest latent vector
 		alpha = 2.0;// shape parameter of user platform preference vector
-		theta = 2.0;// scale parameter of user interests/platform preference
+		theta = 0.5;// scale parameter of user interests/platform preference
 		// vectors
 		rand = new Random(1);
 
@@ -2535,11 +2550,11 @@ public class MultiThreadMPHAT {
 		if (initByTopicModeling) {
 			// initialize by topic modeling
 			gibbsInit();
-			
-			if (InitPlatformPreferenceByTopicModeling){
+
+			if (InitPlatformPreferenceByTopicModeling) {
 				initPlatformPreferenceByTopicModeling();
 			}
-			
+
 			// init users' interest, platform preference, authority, and hub
 			executor = Executors.newFixedThreadPool(nParallelThreads);
 			for (int i = 0; i < nParallelThreads; i++) {
@@ -2583,8 +2598,6 @@ public class MultiThreadMPHAT {
 		altOptimize_PlatformPreference(u, k);
 	}
 
-	
-	
 	/***
 	 * modeling learning
 	 */
@@ -2690,7 +2703,7 @@ public class MultiThreadMPHAT {
 				while (!executor.isTerminated()) {
 					// do nothing, just wait for the threads to finish
 				}
-				
+
 			}
 
 			// set first Likelihood as the maxLikelihood
@@ -2712,6 +2725,16 @@ public class MultiThreadMPHAT {
 					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "updateOpt");
 					executor.execute(worker);
 				}
+				// Set optimized user platform preference
+				for (int u = 0; u < dataset.nUsers; u++) {
+					User currUser = dataset.users[u];
+					for (int z = 0; z < nTopics; z++) {
+						for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+							currUser.optTopicalPlatformPreference[z][p] = currUser.topicalPlatformPreference[z][p];
+						}
+					}
+				}
+
 				executor.shutdown();
 				while (!executor.isTerminated()) {
 					// do nothing, just wait for the threads to finish
@@ -2800,7 +2823,7 @@ public class MultiThreadMPHAT {
 						text = text + "," + Double.toString(currUser.optTopicalPlatformPreference[k][p]);
 					}
 					fo.write(text + "\n");
-				}	
+				}
 			}
 			fo.close();
 		} catch (Exception e) {
@@ -2851,8 +2874,9 @@ public class MultiThreadMPHAT {
 	}
 
 	public static void main(String[] args) {
-		//String datasetPath = "E:/code/java/MP-HAT/mp-hat/output/syn_data/";
-		//String datasetPath = "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
+		// String datasetPath = "E:/code/java/MP-HAT/mp-hat/output/syn_data/";
+		// String datasetPath =
+		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/";
 		int nTopics = 10;
 		int batch = 1;

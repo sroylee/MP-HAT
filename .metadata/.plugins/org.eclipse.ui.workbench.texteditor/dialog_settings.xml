@@ -2,20 +2,20 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="Random" key="selection"/>
+		<item value="either linkLikelihood or postLikelihood is Infinite" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
-			<item value="random"/>
-			<item value="epsilon"/>
-			<item value="gibbsInitAuthorityHubPlatformPreference"/>
-			<item value="gibbsInitUser"/>
+			<item value="either linkLikelihood or postLikelihood is Infinite"/>
+			<item value="gibbsInit"/>
+			<item value="initByTopicModeling"/>
+			<item value="topicalInterests"/>
 			<item value="InitPlatformPreferenceByTopicModeling"/>
-			<item value="userPlatformPreference"/>
-			<item value="output_topicWord"/>
-			<item value="initPostTopic"/>
+			<item value="[platform]"/>
+			<item value="lgMatch"/>
+			<item value="updateOptimalParams"/>
 		</list>
 		<list key="replacehistory">
 		</list>
