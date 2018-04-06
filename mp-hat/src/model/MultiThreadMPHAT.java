@@ -26,7 +26,7 @@ public class MultiThreadMPHAT {
 
 	private static boolean initByTopicModeling = true;
 	private static boolean InitPlatformPreferenceByTopicModeling = true;
-	private static boolean onlyLearnAuthorityHub = true;
+	private static boolean onlyLearnAuthorityHub = false;
 	private static boolean onlyLearnGibbs = false;
 	private static boolean usePrior = true;
 

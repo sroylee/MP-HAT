@@ -190,8 +190,9 @@ public class Synthetic {
 		double[][] authorities = new double[nUsers][nTopics];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				//GammaDistribution gammaDistribution = new GammaDistribution(sigma, userLatentFactors[u][z] / sigma);
-				GammaDistribution gammaDistribution = new GammaDistribution(sigma + userLatentFactors[u][z], userLatentFactors[u][z] / omega);
+				GammaDistribution gammaDistribution = new GammaDistribution(sigma, userLatentFactors[u][z] / sigma);
+				//GammaDistribution gammaDistribution = new GammaDistribution(omega + userLatentFactors[u][z], userLatentFactors[u][z] / omega);
+				//GammaDistribution gammaDistribution = new GammaDistribution(sigma + userLatentFactors[u][z], Math.sqrt(userLatentFactors[u][z]));
 				authorities[u][z] = gammaDistribution.sample();
 			}
 		}
@@ -202,8 +203,9 @@ public class Synthetic {
 		double[][] hubs = new double[nUsers][nTopics];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				//GammaDistribution gammaDistribution = new GammaDistribution(delta, userLatentFactors[u][z] / delta);
-				GammaDistribution gammaDistribution = new GammaDistribution(delta + userLatentFactors[u][z] , userLatentFactors[u][z] / omega);
+				GammaDistribution gammaDistribution = new GammaDistribution(delta, userLatentFactors[u][z] / delta);
+				//GammaDistribution gammaDistribution = new GammaDistribution(omega + userLatentFactors[u][z] , userLatentFactors[u][z] / omega);
+				//GammaDistribution gammaDistribution = new GammaDistribution(delta + userLatentFactors[u][z], Math.sqrt(userLatentFactors[u][z]));
 				hubs[u][z] = gammaDistribution.sample();
 			}
 		}
