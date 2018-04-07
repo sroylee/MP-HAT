@@ -23,7 +23,7 @@ public class Synthetic {
 	}
 
 	private double mass = 0.9;
-	private double userSkewness = 0.05;// together with mass, this means, for
+	private double userSkewness = 0.1;// together with mass, this means, for
 										// each user, 90% of her posts are about
 										// 10% of topics
 	private double topicSkewness = 0.001;// similarly, each topic focuses on 0.1%
@@ -32,7 +32,7 @@ public class Synthetic {
 	private double singlePlatformProp = 0.3;
 	private double platformSkeness;
 
-	private int minNPosts = 50;
+	private int minNPosts = 100;
 	private int maxNPosts = 200;
 
 	private int minNWords = 10;
@@ -40,12 +40,12 @@ public class Synthetic {
 
 	private StatTool statTool = new StatTool();
 
-	public double alpha = 1.0;
-	public double beta = 1.0;
+	public double alpha = 1;
+	public double beta = 1;
 
 	public double sigma = 2.0;
 	public double delta = 2.0;
-	public double omega = 5.0;
+	public double omega = 0.2;
 
 	private Random rand = new Random(1);
 
@@ -190,8 +190,10 @@ public class Synthetic {
 		double[][] authorities = new double[nUsers][nTopics];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				GammaDistribution gammaDistribution = new GammaDistribution(sigma, userLatentFactors[u][z] / sigma);
+				//GammaDistribution gammaDistribution = new GammaDistribution(sigma, userLatentFactors[u][z] / sigma);
 				//GammaDistribution gammaDistribution = new GammaDistribution(omega + userLatentFactors[u][z], userLatentFactors[u][z] / omega);
+				GammaDistribution gammaDistribution = new GammaDistribution(sigma, (userLatentFactors[u][z] /sigma) * omega);
+				//GammaDistribution gammaDistribution = new GammaDistribution(sigma, Math.sqrt(userLatentFactors[u][z]));
 				//GammaDistribution gammaDistribution = new GammaDistribution(sigma + userLatentFactors[u][z], Math.sqrt(userLatentFactors[u][z]));
 				authorities[u][z] = gammaDistribution.sample();
 			}
@@ -203,8 +205,10 @@ public class Synthetic {
 		double[][] hubs = new double[nUsers][nTopics];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				GammaDistribution gammaDistribution = new GammaDistribution(delta, userLatentFactors[u][z] / delta);
+				//GammaDistribution gammaDistribution = new GammaDistribution(delta, userLatentFactors[u][z] / delta);
 				//GammaDistribution gammaDistribution = new GammaDistribution(omega + userLatentFactors[u][z] , userLatentFactors[u][z] / omega);
+				GammaDistribution gammaDistribution = new GammaDistribution(delta, (userLatentFactors[u][z] /delta) * omega);
+				//GammaDistribution gammaDistribution = new GammaDistribution(delta, Math.sqrt(userLatentFactors[u][z]));
 				//GammaDistribution gammaDistribution = new GammaDistribution(delta + userLatentFactors[u][z], Math.sqrt(userLatentFactors[u][z]));
 				hubs[u][z] = gammaDistribution.sample();
 			}
