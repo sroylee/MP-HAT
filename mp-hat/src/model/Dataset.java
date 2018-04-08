@@ -163,6 +163,7 @@ public class Dataset {
 				users[u].postBatches[users[u].nPosts] = batch;
 				users[u].posts[users[u].nPosts] = new Post();
 				users[u].posts[users[u].nPosts].postId = postId;
+				users[u].posts[users[u].nPosts].platform = platform;
 				tokens = tokens[3].trim().split(" ");
 				users[u].posts[users[u].nPosts].nWords = tokens.length;
 				users[u].posts[users[u].nPosts].words = new int[tokens.length];
@@ -171,7 +172,6 @@ public class Dataset {
 					users[u].posts[users[u].nPosts].words[i] = Integer.parseInt(tokens[i]);
 
 				}
-				users[u].posts[users[u].nPosts].platform = platform;
 				users[u].nPosts++;
 				users[u].nPlatformPosts[platform]++;
 			}
@@ -588,4 +588,81 @@ public class Dataset {
 			System.exit(0);
 		}
 	}
+
+	public void getGroundTruth(String groundtruthPath, int nTopics) {
+		try {
+			// topical interest
+			BufferedReader br = new BufferedReader(
+					new FileReader(String.format("%s/userLatentFactors.csv", groundtruthPath)));
+			String line = null;
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String userId = tokens[0];
+				int u = userId2Index.get(userId);
+				users[u].groundtruth_TopicalInterests = new double[nTopics];
+				for (int z = 0; z < users[u].groundtruth_TopicalInterests.length; z++) {
+					users[u].groundtruth_TopicalInterests[z] = Double.parseDouble(tokens[z + 1]);
+				}
+			}
+			br.close();
+
+			// authority
+			br = new BufferedReader(new FileReader(String.format("%s/userAuthorities.csv", groundtruthPath)));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String userId = tokens[0];
+				int u = userId2Index.get(userId);
+				users[u].groundtruth_Authorities = new double[nTopics];
+				for (int z = 0; z < users[u].groundtruth_Authorities.length; z++) {
+					users[u].groundtruth_Authorities[z] = Double.parseDouble(tokens[z + 1]);
+				}
+			}
+			br.close();
+			// hub
+			br = new BufferedReader(new FileReader(String.format("%s/userHubs.csv", groundtruthPath)));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String userId = tokens[0];
+				int u = userId2Index.get(userId);
+				users[u].groundtruth_Hubs = new double[nTopics];
+				for (int z = 0; z < users[u].groundtruth_Hubs.length; z++) {
+					users[u].groundtruth_Hubs[z] = Double.parseDouble(tokens[z + 1]);
+				}
+			}
+			br.close();
+			// platform preference
+			br = new BufferedReader(new FileReader(String.format("%s/userPlatformPreference.csv", groundtruthPath)));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				int u = userId2Index.get(tokens[0]);
+				if (users[u].groundtruth_TopicalPlatformPreference == null) {
+					users[u].groundtruth_TopicalPlatformPreference = new double[nTopics][Configure.NUM_OF_PLATFORM];
+				}
+				int z = Integer.parseInt(tokens[1]);
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					users[u].groundtruth_TopicalPlatformPreference[z][p] = Double.parseDouble(tokens[p + 2]);
+				}
+			}
+			br.close();
+
+			br = new BufferedReader(new FileReader(String.format("%s/postTopics.csv", groundtruthPath)));
+			int postIndex = -1;
+			int u = -1;
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				if (userId2Index.get(tokens[0]) != u) {
+					u = userId2Index.get(tokens[0]);
+					postIndex = 0;
+				}
+				users[u].posts[postIndex].groundTruthTopic = Integer.parseInt(tokens[1]);
+				postIndex++;
+			}
+			br.close();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(-1);
+		}
+	}
+
 }

@@ -24,11 +24,17 @@ public class MultiThreadMPHAT {
 	public static int nTopics;
 	public static int batch;
 
+	private static boolean initByGroundTruth = true;
 	private static boolean initByTopicModeling = true;
 	private static boolean InitPlatformPreferenceByTopicModeling = true;
-	private static boolean onlyLearnAuthorityHub = false;
 	private static boolean onlyLearnGibbs = false;
-	private static boolean usePrior = true;
+	private static boolean learnTopic = false;
+	private static boolean learnUserInterest = false;
+	private static boolean learnUserAuthority = true;
+	private static boolean learnUserHub = false;
+	private static boolean learnUserPlatformPreference = false;
+
+	private static boolean usePrior = false;
 
 	public static int gibbs_BurningPeriods = 50;
 	public static int max_Gibbs_Iterations = 50; // 200
@@ -42,7 +48,7 @@ public class MultiThreadMPHAT {
 	public static double delta;// variance of users' hubs
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
-	public static double lamda = 0.001;
+	public static double lamda = 1;
 
 	public static Random rand;
 
@@ -82,9 +88,9 @@ public class MultiThreadMPHAT {
 	public static int maxIteration_Hubs = 10;
 	public static int maxIteration_platformPreference = 10;
 
-	public static int max_GibbsEM_Iterations = 200;
+	public static int max_GibbsEM_Iterations = 50;
 
-	public static int nParallelThreads = 10;
+	public static int nParallelThreads = 8;
 	public static int[] threadStartIndexes = null;
 	public static int[] threadEndIndexes = null;
 
@@ -178,6 +184,9 @@ public class MultiThreadMPHAT {
 					currUser.optTopicalInterests[z] = currUser.topicalInterests[z];
 					currUser.optAuthorities[z] = currUser.authorities[z];
 					currUser.optHubs[z] = currUser.hubs[z];
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						currUser.optTopicalPlatformPreference[z][p] = currUser.topicalPlatformPreference[z][p];
+					}
 				}
 			}
 		}
@@ -205,6 +214,10 @@ public class MultiThreadMPHAT {
 					// hub
 					g = new GammaDistribution(delta, currUser.topicalInterests[k] / delta);
 					currUser.hubs[k] = g.sample();
+
+					//
+					currUser.topicalRelativePlatformPreference[k] = MathTool
+							.softmax(currUser.topicalPlatformPreference[k]);
 				}
 			}
 		}
@@ -244,7 +257,8 @@ public class MultiThreadMPHAT {
 							} else {
 								currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
 							}
-							System.out.println(u + "," + k + "," + p + "," + currUser.topicalPlatformPreference[k][p]);
+							// System.out.println(u + "," + k + "," + p + "," +
+							// currUser.topicalPlatformPreference[k][p]);
 						}
 
 					}
@@ -264,13 +278,21 @@ public class MultiThreadMPHAT {
 				}
 
 				for (int k = 0; k < nTopics; k++) {
-					GammaDistribution g;
+					// GammaDistribution g;
 					// authority
-					g = new GammaDistribution(sigma, currUser.topicalInterests[k] / sigma);
-					currUser.authorities[k] = g.sample();
+					// g = new GammaDistribution(sigma,
+					// currUser.topicalInterests[k] / sigma);
+					// currUser.authorities[k] = g.sample();
+
+					currUser.authorities[k] = currUser.topicalInterests[k];
 					// hub
-					g = new GammaDistribution(delta, currUser.topicalInterests[k] / delta);
-					currUser.hubs[k] = g.sample();
+					// g = new GammaDistribution(delta,
+					// currUser.topicalInterests[k] / delta);
+					// currUser.hubs[k] = g.sample();
+					currUser.hubs[k] = currUser.topicalInterests[k];
+
+					currUser.topicalRelativePlatformPreference[k] = MathTool
+							.softmax(currUser.topicalPlatformPreference[k]);
 				}
 			}
 		}
@@ -335,7 +357,6 @@ public class MultiThreadMPHAT {
 
 		for (int u = 0; u < dataset.nUsers; u++) {
 			User currUser = dataset.users[u];
-
 			// relationship
 			if (currUser.followings != null) {
 				for (int i = 0; i < currUser.followings.length; i++) {
@@ -345,8 +366,8 @@ public class MultiThreadMPHAT {
 					// Compute H_u^p * A_v^p
 					double HupAvp = 0;
 					for (int z = 0; z < nTopics; z++) {
-						HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z]
-								* following.topicalPlatformPreference[z][p];
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
 					}
 					HupAvp = HupAvp * lamda;
 
@@ -365,8 +386,8 @@ public class MultiThreadMPHAT {
 					// Compute H_u^p * A_v^p
 					double HupAvp = 0;
 					for (int z = 0; z < nTopics; z++) {
-						HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z]
-								* currUser.topicalPlatformPreference[z][p];
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 
 					}
 					HupAvp = HupAvp * lamda;
@@ -388,8 +409,8 @@ public class MultiThreadMPHAT {
 					// Compute H_u^p * A_v^p
 					double HupAvp = 0;
 					for (int z = 0; z < nTopics; z++) {
-						HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
-								* nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
 
 					}
 					HupAvp = HupAvp * lamda;
@@ -409,8 +430,8 @@ public class MultiThreadMPHAT {
 					// Compute H_u^p * A_v^p
 					double HupAvp = 0;
 					for (int z = 0; z < nTopics; z++) {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 
 					}
 					HupAvp = HupAvp * lamda;
@@ -527,7 +548,7 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		if (usePrior) {// topics' prior
+		if (usePrior) {// latent factors' prior
 			for (int k = 0; k < nTopics; k++) {
 				for (int w = 0; w < dataset.vocabulary.length; w++) {
 					postTauLikelihood += (gamma - 1) * Math.log(topicWordDist[k][w]);
@@ -600,8 +621,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u^p * A_v^p
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z]
-							* following.topicalPlatformPreference[z][p];
+					HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+							* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
 				}
 				HupAvp = HupAvp * lamda;
 
@@ -620,8 +641,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u^p * A_v^p
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z]
-							* currUser.topicalPlatformPreference[z][p];
+					HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+							* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 
 				}
 				HupAvp = HupAvp * lamda;
@@ -643,8 +664,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u^p * A_v^p
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * nonFollowing.authorities[z]
-							* nonFollowing.topicalPlatformPreference[z][p];
+					HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+							* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
 
 				}
 				HupAvp = HupAvp * lamda;
@@ -664,8 +685,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u^p * A_v^p
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-							* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+					HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+							* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 
 				}
 				HupAvp = HupAvp * lamda;
@@ -1024,8 +1045,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u^p * A_v^p
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * x[z]
-							* currUser.topicalPlatformPreference[z][p];// now
+					HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p] * x[z]
+							* currUser.topicalRelativePlatformPreference[z][p];// now
 					// A_v
 					// is
 					// x
@@ -1052,8 +1073,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u * A_v
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * x[z]
-							* currUser.topicalPlatformPreference[z][p];// now
+					HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p] * x[z]
+							* currUser.topicalRelativePlatformPreference[z][p];// now
 					// A_v
 					// is
 					// x
@@ -1112,11 +1133,11 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * x
-								* currUser.topicalPlatformPreference[z][p];
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p] * x
+								* currUser.topicalRelativePlatformPreference[z][p];
 					} else {
-						HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z]
-								* currUser.topicalPlatformPreference[z][p];
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
@@ -1129,10 +1150,11 @@ public class MultiThreadMPHAT {
 				// * follower.topicalPlatformPreference[k][p] * follower.hubs[k]
 				// * currUser.topicalPlatformPreference[k][p]);
 				temp = Math.exp(-HupAvp);
-				followerLikelihood += (1 / (1 - temp) * -temp * -lamda * follower.topicalPlatformPreference[k][p]
-						* follower.hubs[k] * currUser.topicalPlatformPreference[k][p])
-						- (1 / (temp + 1) * temp * -lamda * follower.topicalPlatformPreference[k][p] * follower.hubs[k]
-								* currUser.topicalPlatformPreference[k][p]);
+				followerLikelihood += (1 / (1 - temp) * -temp * -lamda
+						* follower.topicalRelativePlatformPreference[k][p] * follower.hubs[k]
+						* currUser.topicalRelativePlatformPreference[k][p])
+						- (1 / (temp + 1) * temp * -lamda * follower.topicalRelativePlatformPreference[k][p]
+								* follower.hubs[k] * currUser.topicalRelativePlatformPreference[k][p]);
 			}
 		}
 
@@ -1146,11 +1168,11 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p] * x
-								* currUser.topicalPlatformPreference[z][p];
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p] * x
+								* currUser.topicalRelativePlatformPreference[z][p];
 					} else {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
@@ -1165,11 +1187,11 @@ public class MultiThreadMPHAT {
 				// * currUser.topicalPlatformPreference[k][p]));
 
 				temp = Math.exp(-HupAvp);
-				nonFollowerLikelihood += (-lamda * currUser.topicalPlatformPreference[k][p] * nonFollower.hubs[k]
-						* nonFollower.topicalPlatformPreference[k][p])
+				nonFollowerLikelihood += (-lamda * currUser.topicalRelativePlatformPreference[k][p]
+						* nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p])
 						- ((1 / (temp + 1)) * temp
-								* (-lamda * nonFollower.hubs[k] * nonFollower.topicalPlatformPreference[k][p]
-										* currUser.topicalPlatformPreference[k][p]));
+								* (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
+										* currUser.topicalRelativePlatformPreference[k][p]));
 			}
 		}
 		if (usePrior) {
@@ -1282,8 +1304,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u^p * A_v^p
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += x[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z]
-							* following.topicalPlatformPreference[z][p];// now
+					HupAvp += x[z] * currUser.topicalRelativePlatformPreference[z][p] * following.authorities[z]
+							* following.topicalRelativePlatformPreference[z][p];// now
 					// H_u
 					// is
 					// x
@@ -1309,8 +1331,8 @@ public class MultiThreadMPHAT {
 				// Compute H_u * A_v
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
-					HupAvp += x[z] * currUser.topicalPlatformPreference[z][p] * nonFollowing.authorities[z]
-							* nonFollowing.topicalPlatformPreference[z][p];// now
+					HupAvp += x[z] * currUser.topicalRelativePlatformPreference[z][p] * nonFollowing.authorities[z]
+							* nonFollowing.topicalRelativePlatformPreference[z][p];// now
 					// H_u
 					// is
 					// x
@@ -1373,11 +1395,11 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += x * currUser.topicalPlatformPreference[z][p] * following.authorities[z]
-								* following.topicalPlatformPreference[z][p];
+						HupAvp += x * currUser.topicalRelativePlatformPreference[z][p] * following.authorities[z]
+								* following.topicalRelativePlatformPreference[z][p];
 					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z]
-								* following.topicalPlatformPreference[z][p];
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
@@ -1394,11 +1416,11 @@ public class MultiThreadMPHAT {
 
 				temp = Math.exp(-HupAvp);
 				followingLikelihood += (1 / (1 - temp) * -temp
-						* (-lamda * following.authorities[k] * following.topicalPlatformPreference[k][p]
-								* currUser.topicalPlatformPreference[k][p]))
+						* (-lamda * following.authorities[k] * following.topicalRelativePlatformPreference[k][p]
+								* currUser.topicalRelativePlatformPreference[k][p]))
 						- (1 / (temp + 1) * temp
-								* (-lamda * following.authorities[k] * following.topicalPlatformPreference[k][p]
-										* currUser.topicalPlatformPreference[k][p]));
+								* (-lamda * following.authorities[k] * following.topicalRelativePlatformPreference[k][p]
+										* currUser.topicalRelativePlatformPreference[k][p]));
 			}
 		}
 
@@ -1412,11 +1434,11 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += x * currUser.topicalPlatformPreference[z][p] * nonFollowing.authorities[z]
-								* nonFollowing.topicalPlatformPreference[z][p];
+						HupAvp += x * currUser.topicalRelativePlatformPreference[z][p] * nonFollowing.authorities[z]
+								* nonFollowing.topicalRelativePlatformPreference[z][p];
 					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
-								* nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
@@ -1431,11 +1453,12 @@ public class MultiThreadMPHAT {
 				// * currUser.topicalPlatformPreference[k][p]));
 
 				temp = Math.exp(-HupAvp);
-				nonFollowingLikelihood += (-lamda * currUser.topicalPlatformPreference[k][p]
-						* nonFollowing.authorities[k] * nonFollowing.topicalPlatformPreference[k][p])
+				nonFollowingLikelihood += (-lamda * currUser.topicalRelativePlatformPreference[k][p]
+						* nonFollowing.authorities[k] * nonFollowing.topicalRelativePlatformPreference[k][p])
 						- ((1 / (temp + 1)) * temp
-								* (-lamda * nonFollowing.authorities[k] * nonFollowing.topicalPlatformPreference[k][p]
-										* currUser.topicalPlatformPreference[k][p]));
+								* (-lamda * nonFollowing.authorities[k]
+										* nonFollowing.topicalRelativePlatformPreference[k][p]
+										* currUser.topicalRelativePlatformPreference[k][p]));
 
 			}
 		}
@@ -1538,6 +1561,7 @@ public class MultiThreadMPHAT {
 
 		// Set the current user to be v
 		User currUser = dataset.users[u];
+		double[] topicalRelativePlatformPreference = MathTool.softmax(x);
 		double temp;
 		double log2 = Math.log(2);
 		// First term in eqn 28. Compute link likelihood.
@@ -1551,27 +1575,18 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += currUser.hubs[z] * x[p] * following.authorities[z]
-								* following.topicalPlatformPreference[z][p];// now
-						// Eta_u,k
-						// is
-						// x
+						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * following.authorities[z]
+								* following.topicalRelativePlatformPreference[z][p];
 					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p] * following.authorities[z]
-								* following.topicalPlatformPreference[z][p];
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
 					}
 
 				}
 				HupAvp = HupAvp * lamda;
-				// double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-				// linkLikelihood += Math.log(fHupAvp);
-
-				// linkLikelihood += Math.log(1 - Math.exp(-HupAvp)) -
-				// Math.log(Math.exp(-HupAvp) + 1);
-
 				temp = Math.exp(-HupAvp);
-				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 
+				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 			}
 		}
 		if (currUser.followers != null) {
@@ -1584,25 +1599,17 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z]
-								* x[p];// now
-						// Eta_u,k
-						// is
-						// x
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
 					} else {
-						HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p] * currUser.authorities[z]
-								* currUser.topicalPlatformPreference[z][p];
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
-				// double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-				// linkLikelihood += Math.log(fHupAvp);
-				// linkLikelihood += Math.log(1 - Math.exp(-HupAvp)) -
-				// Math.log(Math.exp(-HupAvp) + 1);
-
 				temp = Math.exp(-HupAvp);
-				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 
+				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 			}
 		}
 
@@ -1617,24 +1624,16 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += currUser.hubs[z] * x[p] * nonFollowing.authorities[z]
-								* nonFollowing.topicalPlatformPreference[z][p];// now
-						// Eta_u,k
-						// is
-						// x
+						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * nonFollowing.authorities[z]
+								* nonFollowing.topicalRelativePlatformPreference[z][p];
 					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
-								* nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
-				// double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-				// nonLinkLikelihood += Math.log(1 - fHupAvp);
-				// nonLinkLikelihood += Math.log(2) - HupAvp -
-				// Math.log(Math.exp(-HupAvp) + 1);
 
 				nonLinkLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
-
 			}
 		}
 		if (currUser.nonFollowers != null) {
@@ -1647,24 +1646,16 @@ public class MultiThreadMPHAT {
 				double HupAvp = 0;
 				for (int z = 0; z < nTopics; z++) {
 					if (z == k) {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-								* currUser.authorities[z] * x[p];// now
-						// Eta_u,k
-						// is
-						// x
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
 					} else {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 					}
 				}
 				HupAvp = HupAvp * lamda;
-				// double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
-				// nonLinkLikelihood += Math.log(1 - fHupAvp);
-				// nonLinkLikelihood += Math.log(2) - HupAvp -
-				// Math.log(Math.exp(-HupAvp) + 1);
 
 				nonLinkLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
-
 			}
 		}
 
@@ -1682,17 +1673,17 @@ public class MultiThreadMPHAT {
 		}
 		double logDenominator = Math.log(denominator);
 		for (int s = 0; s < currUser.nPosts; s++) {
-			int z = currUser.posts[s].topic;
-			int currP = currUser.posts[s].platform;
 			if (currUser.postBatches[s] == batch) {
+				int z = currUser.posts[s].topic;
+				int p = currUser.posts[s].platform;
 				if (z == k) {
-					postLikelihood += x[currP] - logDenominator;
+					postLikelihood += x[p] - logDenominator;
 				}
 			}
 		}
 
 		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
-		// likelihood = platformLikelihood;
+		// likelihood = linkLikelihood + nonLinkLikelihood;
 
 		return likelihood;
 	}
@@ -1708,7 +1699,7 @@ public class MultiThreadMPHAT {
 	 * @param x
 	 * @return
 	 */
-	private double gradLikelihood_platformPreference(int u, int k, int p, double x) {
+	private double gradLikelihood_platformPreference(int u, int k, int j, double x) {
 		// Refer to Eqn 31 in Learning paper
 		double linkLikelihood = 0;
 		double nonLinkLikelihood = 0;
@@ -1716,49 +1707,66 @@ public class MultiThreadMPHAT {
 		double platformLikelihood = 0;
 		double likelihood = 0;
 
-		// Set the current user to be v
+		// Set the current user to be
 		User currUser = dataset.users[u];
-		double temp;
+
+		double[] tempExps = new double[Configure.NUM_OF_PLATFORM];
+		double sumExp = 0;
+		for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+			if (currUser.platforms[p] == 0) {
+				continue;
+			}
+			if (p == j) {
+				tempExps[p] += Math.exp(x);
+			} else {
+				tempExps[p] = Math.exp(currUser.topicalPlatformPreference[k][p]);
+			}
+			sumExp += tempExps[p];
+		}
+		double sumExpSqr = sumExp * sumExp;
+		double[] topicalRelativePlatformPreference = new double[Configure.NUM_OF_PLATFORM];
+		for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+			if (currUser.platforms[p] == 0) {
+				topicalRelativePlatformPreference[p] = 0;
+			} else {
+				topicalRelativePlatformPreference[p] = tempExps[p] / sumExp;
+			}
+		}
+
+		double tempExpHA;
+		double tempGrad;
 		// First term in eqn 31. Compute link likelihood.
 		if (currUser.followings != null) {
 			for (int i = 0; i < currUser.followings.length; i++) {
 				int v = currUser.followings[i].followingIndex;
 				User following = dataset.users[v];
-				int followingPlatform = currUser.followings[i].platform;
-				if (followingPlatform == p) {
-					// Compute H_u^p * A_v^p
-					double HupAvp = 0;
-					for (int z = 0; z < nTopics; z++) {
-						if (z == k) {
-							HupAvp += currUser.hubs[z] * x * following.authorities[z]
-									* following.topicalPlatformPreference[z][p];// now
-							// Eta_u,k,p
-							// is
-							// x
-						} else {
-							HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
-									* following.authorities[z] * following.topicalPlatformPreference[z][p];
-						}
+				int p = currUser.followings[i].platform;
 
+				// Compute H_u^p * A_v^p
+				double HupAvp = 0;
+				for (int z = 0; z < nTopics; z++) {
+					if (z == k) {
+						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * following.authorities[z]
+								* following.topicalRelativePlatformPreference[z][p];
+					} else {
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
 					}
-					HupAvp = HupAvp * lamda;
-
-					// linkLikelihood += (1 / (1 - Math.exp(-HupAvp)) *
-					// -Math.exp(-HupAvp)
-					// * (-lamda * currUser.hubs[k] * following.authorities[k]
-					// * following.topicalPlatformPreference[k][p]))
-					// - (1 / (Math.exp(-HupAvp) + 1) * Math.exp(-HupAvp) *
-					// (-lamda * currUser.hubs[k]
-					// * following.authorities[k] *
-					// following.topicalPlatformPreference[k][p]));
-
-					temp = Math.exp(-HupAvp);
-					linkLikelihood += (1 / (1 - temp) * -temp
-							* (-lamda * currUser.hubs[k] * following.authorities[k]
-									* following.topicalPlatformPreference[k][p]))
-							- (1 / (temp + 1) * temp * (-lamda * currUser.hubs[k] * following.authorities[k]
-									* following.topicalPlatformPreference[k][p]));
 				}
+				HupAvp = HupAvp * lamda;
+				tempExpHA = Math.exp(-HupAvp);
+
+				if (p == j) {
+					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+				} else {
+					tempGrad = -tempExps[p] * tempExps[j];
+				}
+				tempGrad /= sumExpSqr;
+				linkLikelihood += ((1 / (1 - tempExpHA)) * (-tempExpHA)
+						* (-lamda * currUser.hubs[k] * following.authorities[k]
+								* following.topicalRelativePlatformPreference[k][p] * tempGrad))
+						- ((1 / (tempExpHA + 1)) * tempExpHA * (-lamda * currUser.hubs[k] * following.authorities[k]
+								* following.topicalRelativePlatformPreference[k][p] * tempGrad));
 
 			}
 		}
@@ -1766,40 +1774,35 @@ public class MultiThreadMPHAT {
 			for (int i = 0; i < currUser.followers.length; i++) {
 				int v = currUser.followers[i].followerIndex;
 				User follower = dataset.users[v];
-				int followerPlatform = currUser.followers[i].platform;
-				if (followerPlatform == p) {
-					// Compute H_u^p * A_v^p
-					double HupAvp = 0;
-					for (int z = 0; z < nTopics; z++) {
-						if (z == k) {
-							HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p]
-									* currUser.authorities[z] * x;// now
-							// Eta_u,k
-							// is x
-						} else {
-							HupAvp += follower.hubs[z] * follower.topicalPlatformPreference[z][p]
-									* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
-						}
+				int p = currUser.followers[i].platform;
+
+				// Compute H_u^p * A_v^p
+				double HupAvp = 0;
+				for (int z = 0; z < nTopics; z++) {
+					if (z == k) {
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
+					} else {
+						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 					}
-					HupAvp = HupAvp * lamda;
-
-					// linkLikelihood += (1 / (1 - Math.exp(-HupAvp)) *
-					// -Math.exp(-HupAvp)
-					// * (-lamda * follower.hubs[k] *
-					// follower.topicalPlatformPreference[k][p]
-					// * currUser.authorities[k]))
-					// - (1 / (Math.exp(-HupAvp) + 1) * Math.exp(-HupAvp) *
-					// (-lamda * follower.hubs[k]
-					// * follower.topicalPlatformPreference[k][p] *
-					// currUser.authorities[k]));
-
-					temp = Math.exp(-HupAvp);
-					linkLikelihood += (1 / (1 - temp) * -temp
-							* (-lamda * follower.hubs[k] * follower.topicalPlatformPreference[k][p]
-									* currUser.authorities[k]))
-							- (1 / (temp + 1) * temp * (-lamda * follower.hubs[k]
-									* follower.topicalPlatformPreference[k][p] * currUser.authorities[k]));
 				}
+				HupAvp = HupAvp * lamda;
+				tempExpHA = Math.exp(-HupAvp);
+
+				if (p == j) {
+					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+				} else {
+					tempGrad = -tempExps[p] * tempExps[j];
+				}
+				tempGrad /= sumExpSqr;
+
+				linkLikelihood += ((1 / (1 - tempExpHA)) * (-tempExpHA)
+						* (-lamda * follower.hubs[k] * follower.topicalRelativePlatformPreference[k][p]
+								* currUser.authorities[k] * tempGrad))
+						- (1 / (tempExpHA + 1) * tempExpHA
+								* (-lamda * follower.hubs[k] * follower.topicalRelativePlatformPreference[k][p]
+										* currUser.authorities[k] * tempGrad));
 
 			}
 		}
@@ -1809,38 +1812,34 @@ public class MultiThreadMPHAT {
 			for (int i = 0; i < currUser.nonFollowings.length; i++) {
 				int v = currUser.nonFollowings[i].followingIndex;
 				User nonFollowing = dataset.users[v];
-				int nonFollowingPlatform = currUser.nonFollowings[i].platform;
-				if (nonFollowingPlatform == p) {
-					// Compute H_u^p * A_v^p
-					double HupAvp = 0;
-					for (int z = 0; z < nTopics; z++) {
-						if (z == k) {
-							HupAvp += currUser.hubs[z] * x * nonFollowing.authorities[z]
-									* nonFollowing.topicalPlatformPreference[z][p];// now
-							// Eta_u,k
-							// is
-							// x
-						} else {
-							HupAvp += currUser.hubs[z] * currUser.topicalPlatformPreference[z][p]
-									* nonFollowing.authorities[z] * nonFollowing.topicalPlatformPreference[z][p];
-						}
+				int p = currUser.nonFollowings[i].platform;
+
+				// Compute H_u^p * A_v^p
+				double HupAvp = 0;
+				for (int z = 0; z < nTopics; z++) {
+					if (z == k) {
+						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * nonFollowing.authorities[z]
+								* nonFollowing.topicalRelativePlatformPreference[z][p];
+					} else {
+						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
 					}
-					HupAvp = HupAvp * lamda;
 
-					// nonLinkLikelihood += (-lamda * currUser.hubs[k] *
-					// nonFollowing.authorities[k]
-					// * nonFollowing.topicalPlatformPreference[k][p])
-					// - ((1 / (Math.exp(-HupAvp) + 1)) * (Math.exp(-HupAvp)) *
-					// (-lamda * currUser.hubs[k]
-					// * nonFollowing.authorities[k] *
-					// nonFollowing.topicalPlatformPreference[k][p]));
-
-					temp = Math.exp(-HupAvp);
-					nonLinkLikelihood += (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
-							* nonFollowing.topicalPlatformPreference[k][p])
-							- ((1 / (temp + 1)) * temp * (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
-									* nonFollowing.topicalPlatformPreference[k][p]));
 				}
+				HupAvp = HupAvp * lamda;
+				tempExpHA = Math.exp(-HupAvp);
+
+				if (p == j) {
+					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+				} else {
+					tempGrad = -tempExps[p] * tempExps[j];
+				}
+				tempGrad /= sumExpSqr;
+
+				nonLinkLikelihood += (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
+						* nonFollowing.topicalRelativePlatformPreference[k][p] * tempGrad)
+						- ((1 / (tempExpHA + 1)) * tempExpHA * (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
+								* nonFollowing.topicalRelativePlatformPreference[k][p] * tempGrad));
 
 			}
 		}
@@ -1848,69 +1847,50 @@ public class MultiThreadMPHAT {
 			for (int i = 0; i < currUser.nonFollowers.length; i++) {
 				int v = currUser.nonFollowers[i].followerIndex;
 				User nonFollower = dataset.users[v];
-				int nonFollowerPlatform = currUser.nonFollowers[i].platform;
-				if (nonFollowerPlatform == p) {
-					// Compute H_u^p * A_v^p
-					double HupAvp = 0;
-					for (int z = 0; z < nTopics; z++) {
-						if (z == k) {
-							HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-									* currUser.authorities[z] * x;// now
-							// Eta_u,k
-							// is x
-						} else {
-							HupAvp += nonFollower.hubs[z] * nonFollower.topicalPlatformPreference[z][p]
-									* currUser.authorities[z] * currUser.topicalPlatformPreference[z][p];
-						}
+				int p = currUser.nonFollowers[i].platform;
+				// Compute H_u^p * A_v^p
+				double HupAvp = 0;
+				for (int z = 0; z < nTopics; z++) {
+					if (z == k) {
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
+					} else {
+						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
 					}
-					HupAvp = HupAvp * lamda;
 
-					// nonLinkLikelihood += (-lamda * nonFollower.hubs[k] *
-					// nonFollower.topicalPlatformPreference[k][p]
-					// * currUser.authorities[k])
-					// - ((1 / (Math.exp(-HupAvp) + 1)) * (Math.exp(-HupAvp)) *
-					// (-lamda * nonFollower.hubs[k]
-					// * nonFollower.topicalPlatformPreference[k][p] *
-					// currUser.authorities[k]));
-
-					temp = Math.exp(-HupAvp);
-					nonLinkLikelihood += (-lamda * nonFollower.hubs[k] * nonFollower.topicalPlatformPreference[k][p]
-							* currUser.authorities[k])
-							- ((1 / (temp + 1)) * temp * (-lamda * nonFollower.hubs[k]
-									* nonFollower.topicalPlatformPreference[k][p] * currUser.authorities[k]));
 				}
+				HupAvp = HupAvp * lamda;
+				tempExpHA = Math.exp(-HupAvp);
+				if (p == j) {
+					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+				} else {
+					tempGrad = -tempExps[p] * tempExps[j];
+				}
+				tempGrad /= sumExpSqr;
 
+				nonLinkLikelihood += (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
+						* currUser.authorities[k] * tempGrad)
+						- ((1 / (tempExpHA + 1)) * tempExpHA
+								* (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
+										* currUser.authorities[k] * tempGrad));
 			}
+
 		}
 
 		// Third term in eqn 31. Compute post likelihood.
 		double firstSubTerm = 0;
 		double secondSubTerm = 0;
-		double thirdSubTerm = 0;
 
-		temp = Math.exp(x);
-		for (int t = 0; t < Configure.NUM_OF_PLATFORM; t++) {
-			if (currUser.platforms[t] == 0) {
-				continue;
-			}
-			if (p == t) {
-				// thirdSubTerm += Math.exp(x);
-				thirdSubTerm += temp;
-			} else {
-				thirdSubTerm += Math.exp(currUser.topicalPlatformPreference[k][t]);
-			}
-		}
 		for (int s = 0; s < currUser.nPosts; s++) {
 			int z = currUser.posts[s].topic;
-			int j = currUser.posts[s].platform;
+			int p = currUser.posts[s].platform;
 			if (currUser.postBatches[s] == batch) {
-				if (z == k && p == j) {
+				if (z == k && j == p) {
 					firstSubTerm += 1;
 				}
 				if (z == k) {
-					// secondSubTerm += (1 / thirdSubTerm) * Math.exp(x);
-					secondSubTerm += (1 / thirdSubTerm) * temp;
-
+					secondSubTerm += tempExps[j] / sumExp;
 				}
 			}
 		}
@@ -1922,7 +1902,7 @@ public class MultiThreadMPHAT {
 		}
 
 		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
-		// likelihood = platformLikelihood;
+		// likelihood = linkLikelihood + nonLinkLikelihood;
 
 		return likelihood;
 
@@ -1945,6 +1925,7 @@ public class MultiThreadMPHAT {
 		boolean flag = true;
 		double diff = 0;
 		double f = Double.MAX_VALUE;
+		boolean isChanged = false;
 
 		for (int iter = 0; iter < maxIteration_platformPreference; iter++) {
 			// compute gradient
@@ -1992,6 +1973,7 @@ public class MultiThreadMPHAT {
 				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 					currentX[p] = x[p];
 				}
+				isChanged = true;
 				// to see if F actually reduce after every iteration
 				if (opt_platform_verbose) {
 					System.out.printf("alt_hub: u = %d iter = %d f = %f\n", u, iter, f);
@@ -2003,6 +1985,10 @@ public class MultiThreadMPHAT {
 				}
 				break;// cannot improve further
 			}
+		}
+		if (isChanged) {
+			dataset.users[u].topicalRelativePlatformPreference[k] = MathTool
+					.softmax(dataset.users[u].topicalPlatformPreference[k]);
 		}
 	}
 
@@ -2430,6 +2416,26 @@ public class MultiThreadMPHAT {
 		}
 	}
 
+	private void initByGroundTruth(String groundtruthPath) {
+		dataset.getGroundTruth(groundtruthPath, nTopics);
+		for (int u = 0; u < dataset.users.length; u++) {
+			for (int i = 0; i < dataset.users[u].nPosts; i++) {
+				dataset.users[u].posts[i].topic = dataset.users[u].posts[i].groundTruthTopic;
+			}
+			for (int z = 0; z < nTopics; z++) {
+				dataset.users[u].topicalInterests[z] = dataset.users[u].groundtruth_TopicalInterests[z];
+				dataset.users[u].authorities[z] = dataset.users[u].groundtruth_Authorities[z];
+				dataset.users[u].hubs[z] = dataset.users[u].groundtruth_Hubs[z];
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					dataset.users[u].topicalPlatformPreference[z][p] = dataset.users[u].groundtruth_TopicalPlatformPreference[z][p];
+				}
+				dataset.users[u].topicalRelativePlatformPreference[z] = MathTool
+						.softmax(dataset.users[u].topicalPlatformPreference[z]);
+			}
+		}
+		altOptimize_topics();
+	}
+
 	private void initPlatformPreferenceByTopicModeling() {
 		// init counts for the topical platform preferences
 		int[][] userTopicPostCounts = new int[dataset.nUsers][nTopics];
@@ -2472,7 +2478,7 @@ public class MultiThreadMPHAT {
 							}
 						}
 					} else {
-						currUser.topicalPlatformPreference[k][p] = epsilon;
+						currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
 					}
 				}
 			}
@@ -2522,6 +2528,8 @@ public class MultiThreadMPHAT {
 			currUser.optHubs = new double[nTopics];
 			currUser.optTopicalInterests = new double[nTopics];
 			currUser.optTopicalPlatformPreference = new double[nTopics][Configure.NUM_OF_PLATFORM];
+			currUser.topicalRelativePlatformPreference = new double[nTopics][];
+
 		}
 
 		// allocate memory for topics
@@ -2534,6 +2542,11 @@ public class MultiThreadMPHAT {
 			for (int k = 0; k < nTopics; k++) {
 				n_zu[k][u] = 0;
 			}
+		}
+
+		if (initByGroundTruth) {
+			initByGroundTruth(datapath);
+			return;
 		}
 
 		// init topic assignment for posts
@@ -2605,19 +2618,26 @@ public class MultiThreadMPHAT {
 		getThreadIndexes();
 		init();
 
-		if (onlyLearnGibbs) {
-			// TopicWordsDist
-			for (int z = 0; z < nTopics; z++) {
-				for (int w = 0; w < dataset.vocabulary.length; w++)
-					optTopicWordDist[z][w] = topicWordDist[z][w];
-			}
+		// save initial solution
+		// TopicWordsDist
+		for (int z = 0; z < nTopics; z++) {
+			for (int w = 0; w < dataset.vocabulary.length; w++)
+				optTopicWordDist[z][w] = topicWordDist[z][w];
+		}
+		ExecutorService executor = null;
+		// set optimized user topical interest, authority and hub
+		executor = Executors.newFixedThreadPool(nParallelThreads);
+		for (int i = 0; i < nParallelThreads; i++) {
+			Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "updateOpt");
+			executor.execute(worker);
+		}
+		executor.shutdown();
+		while (!executor.isTerminated()) {
+			// do nothing, just wait for the threads to finish
+		}
 
-			// UserTopicalInterest
-			for (int u = 0; u < dataset.nUsers; u++) {
-				for (int z = 0; z < nTopics; z++) {
-					dataset.users[u].optTopicalInterests[z] = dataset.users[u].topicalInterests[z];
-				}
-			}
+		// start learning
+		if (onlyLearnGibbs) {
 			output_topicWord();
 			output_topicInterest();
 			outputPostTopicTopWords(20);
@@ -2634,64 +2654,69 @@ public class MultiThreadMPHAT {
 		System.out.println("#Topics:" + nTopics);
 		System.out.println("#platforms:" + Configure.NUM_OF_PLATFORM);
 
-		ExecutorService executor = null;
-
 		for (int iter = 0; iter < max_GibbsEM_Iterations; iter++) {
 			// EM part that employs alternating optimization
 			// topical interest
-			System.out.printf("[iter-%d] optimizing users' topical interest\n", iter);
-			executor = Executors.newFixedThreadPool(nParallelThreads);
-			for (int i = 0; i < nParallelThreads; i++) {
-				Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optTopicInterests");
-				executor.execute(worker);
-			}
-			executor.shutdown();
-			while (!executor.isTerminated()) {
-				// do nothing, just wait for the threads to finish
-			}
-			System.out.printf("[iter-%d] after learning interest likelihood = %f\n", iter, getLikelihood_parallel());
-
-			// authority
-			System.out.printf("[iter-%d] optimizing users' authorities\n", iter);
-			executor = Executors.newFixedThreadPool(nParallelThreads);
-			for (int i = 0; i < nParallelThreads; i++) {
-				Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optAuthorities");
-				executor.execute(worker);
-			}
-			executor.shutdown();
-			while (!executor.isTerminated()) {
-				// do nothing, just wait for the threads to finish
-			}
-			System.out.printf("[iter-%d] after learning authority likelihood = %f\n", iter, getLikelihood_parallel());
-
-			// hub
-			System.out.printf("[iter-%d] optimizing users' hubs\n", iter);
-			executor = Executors.newFixedThreadPool(nParallelThreads);
-			for (int i = 0; i < nParallelThreads; i++) {
-				Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optHubs");
-				executor.execute(worker);
-			}
-			executor.shutdown();
-			while (!executor.isTerminated()) {
-				// do nothing, just wait for the threads to finish
-			}
-			System.out.printf("[iter-%d] after learning hub likelihood = %f\n", iter, getLikelihood_parallel());
-
-			// platform preference
-			System.out.printf("[iter-%d] optimizing users' platform preference\n", iter);
-			// TODO: parallelizable???
-			for (int u = 0; u < dataset.nUsers; u++) {
-				for (int k = 0; k < nTopics; k++) {
-					altOptimize_PlatformPreference(u, k);
+			if (learnUserInterest) {
+				System.out.printf("[iter-%d] optimizing users' topical interest\n", iter);
+				executor = Executors.newFixedThreadPool(nParallelThreads);
+				for (int i = 0; i < nParallelThreads; i++) {
+					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optTopicInterests");
+					executor.execute(worker);
 				}
+				executor.shutdown();
+				while (!executor.isTerminated()) {
+					// do nothing, just wait for the threads to finish
+				}
+				System.out.printf("[iter-%d] after learning interest likelihood = %f\n", iter,
+						getLikelihood_parallel());
 			}
-			System.out.printf("[iter-%d] after learning platform preference likelihood = %f\n", iter,
-					getLikelihood_parallel());
+			// authority
+			if (learnUserAuthority) {
+				System.out.printf("[iter-%d] optimizing users' authorities\n", iter);
+				executor = Executors.newFixedThreadPool(nParallelThreads);
+				for (int i = 0; i < nParallelThreads; i++) {
+					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optAuthorities");
+					executor.execute(worker);
+				}
+				executor.shutdown();
+				while (!executor.isTerminated()) {
+					// do nothing, just wait for the threads to finish
+				}
+				System.out.printf("[iter-%d] after learning authority likelihood = %f\n", iter,
+						getLikelihood_parallel());
+			}
+			// hub
+			if (learnUserHub) {
+				System.out.printf("[iter-%d] optimizing users' hubs\n", iter);
+				executor = Executors.newFixedThreadPool(nParallelThreads);
+				for (int i = 0; i < nParallelThreads; i++) {
+					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optHubs");
+					executor.execute(worker);
+				}
+				executor.shutdown();
+				while (!executor.isTerminated()) {
+					// do nothing, just wait for the threads to finish
+				}
+				System.out.printf("[iter-%d] after learning hub likelihood = %f\n", iter, getLikelihood_parallel());
+			}
+			// platform preference
+			if (learnUserPlatformPreference) {
+				System.out.printf("[iter-%d] optimizing users' platform preference\n", iter);
+				// TODO: parallelizable???
+				for (int u = 0; u < dataset.nUsers; u++) {
+					for (int k = 0; k < nTopics; k++) {
+						altOptimize_PlatformPreference(u, k);
+					}
+				}
+				System.out.printf("[iter-%d] after learning platform preference likelihood = %f\n", iter,
+						getLikelihood_parallel());
+			}
 
-			if (!onlyLearnAuthorityHub) {
+			// Gibbs part that employ topic sampling
+			if (learnTopic) {
 				System.out.printf("[iter-%d] optimizing topics' word distribution\n", iter);
 				altOptimize_topics();
-
 				// Gibbs part that employ topic sampling
 				System.out.printf("[iter-%d] sampling topic for users' posts\n", iter);
 				executor = Executors.newFixedThreadPool(nParallelThreads);
@@ -2703,7 +2728,6 @@ public class MultiThreadMPHAT {
 				while (!executor.isTerminated()) {
 					// do nothing, just wait for the threads to finish
 				}
-
 			}
 
 			// set first Likelihood as the maxLikelihood
@@ -2725,16 +2749,6 @@ public class MultiThreadMPHAT {
 					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "updateOpt");
 					executor.execute(worker);
 				}
-				// Set optimized user platform preference
-				for (int u = 0; u < dataset.nUsers; u++) {
-					User currUser = dataset.users[u];
-					for (int z = 0; z < nTopics; z++) {
-						for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-							currUser.optTopicalPlatformPreference[z][p] = currUser.topicalPlatformPreference[z][p];
-						}
-					}
-				}
-
 				executor.shutdown();
 				while (!executor.isTerminated()) {
 					// do nothing, just wait for the threads to finish
@@ -2874,10 +2888,10 @@ public class MultiThreadMPHAT {
 	}
 
 	public static void main(String[] args) {
-		// String datasetPath = "E:/code/java/MP-HAT/mp-hat/output/syn_data/";
+		String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
-		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/";
+		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/";
 		int nTopics = 10;
 		int batch = 1;
 

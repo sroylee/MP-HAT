@@ -18,7 +18,7 @@ public class CompareWithGroundTruth {
 	private boolean userInterest = true;
 	private boolean userAuthority = true;
 	private boolean userHub = true;
-	private boolean userPlatformPreference = false;
+	private boolean userPlatformPreference = true;
 
 	private String groundtruthPath;
 	private String learntPath;
@@ -27,7 +27,7 @@ public class CompareWithGroundTruth {
 
 	private int nTopics;
 	private int nUsers;
-	private int nPlatforms =2;
+	private int nPlatforms = 2;
 	private int nWords;
 
 	public HashMap<String, Integer> userId2Index;
@@ -157,12 +157,11 @@ public class CompareWithGroundTruth {
 					int u = userId2Index.get(tokens[0]);
 					int z = Integer.parseInt(tokens[1]);
 					for (int p = 2; p < tokens.length; p++) {
-						g_userPlatformPreferenceDistributions[u][z][p-2] = Double.parseDouble(tokens[p]);
+						g_userPlatformPreferenceDistributions[u][z][p - 2] = Double.parseDouble(tokens[p]);
 					}
 				}
 				br.close();
-			}				
-			
+			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -262,13 +261,12 @@ public class CompareWithGroundTruth {
 					int u = userId2Index.get(tokens[0]);
 					int z = Integer.parseInt(tokens[1]);
 					for (int p = 2; p < tokens.length; p++) {
-						l_userPlatformPreferenceDistributions[u][z][p-2] = Double.parseDouble(tokens[p]);
+						l_userPlatformPreferenceDistributions[u][z][p - 2] = Double.parseDouble(tokens[p]);
 					}
 				}
 				br.close();
 			}
-			
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -365,7 +363,7 @@ public class CompareWithGroundTruth {
 			}
 			bw.close();
 
-			//System.exit(-1);
+			// System.exit(-1);
 
 			System.out.println("measuring user authority distribution distance");
 			vector = new Vector();
@@ -402,7 +400,7 @@ public class CompareWithGroundTruth {
 				}
 			}
 			bw.close();
-			
+
 			System.out.println("measuring user hub distribution distance");
 			vector = new Vector();
 			filename = String.format("%s/userHubDistance.csv", outputPath);
@@ -423,7 +421,7 @@ public class CompareWithGroundTruth {
 				}
 				for (int k = 0; k < nTopics; k++) {
 					if (l_userHubDistributions[u][k] > l_authority_max) {
-						l_authority_max = l_userAuthorityDistributions[u][k];
+						l_authority_max = l_userHubDistributions[u][k];
 						l_topic_max = k;
 					}
 				}
@@ -436,28 +434,28 @@ public class CompareWithGroundTruth {
 				}
 			}
 			bw.close();
-			
+
 			System.out.println("measuring user platform preferences distance");
 			vector = new Vector();
 			filename = String.format("%s/userPlatformDistance.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
 			iter = userId2Index.entrySet().iterator();
-			int l_platform_max[] = new int [nTopics];
-			int g_platform_max[] = new int [nTopics];
+			int l_platform_max[] = new int[nTopics];
+			int g_platform_max[] = new int[nTopics];
 			double l_preference_max = 0.0;
 			double g_preference_max = 0.0;
-			//l_topic_max = 0;
-			//g_topic_max = 0;
+			// l_topic_max = 0;
+			// g_topic_max = 0;
 			while (iter.hasNext()) {
 				Map.Entry<String, Integer> pair = iter.next();
 				int u = pair.getValue();
-					
-				//l_authority_max = 0.0;
-				//g_authority_max = 0.0;
+
+				// l_authority_max = 0.0;
+				// g_authority_max = 0.0;
 				for (int k = 0; k < nTopics; k++) {
 					l_preference_max = 0.0;
-					g_preference_max = 0.0;	
-					for (int p=0; p< nPlatforms; p++){
+					g_preference_max = 0.0;
+					for (int p = 0; p < nPlatforms; p++) {
 						if (g_userPlatformPreferenceDistributions[u][k][p] > g_preference_max) {
 							g_preference_max = g_userPlatformPreferenceDistributions[u][k][p];
 							g_platform_max[k] = p;
@@ -468,19 +466,18 @@ public class CompareWithGroundTruth {
 						}
 					}
 				}
-				
+
 				int nCorrect = 0;
-				for (int k=0; k<nTopics; k++){
+				for (int k = 0; k < nTopics; k++) {
 					if (g_platform_max[k] == l_platform_max[lgMatch[k]]) {
-						nCorrect ++;
+						nCorrect++;
 					}
 				}
-				double result = (double)nCorrect/nTopics;
+				double result = (double) nCorrect / nTopics;
 				bw.write(pair.getKey() + "," + result + "\n");
-				
+
 			}
 			bw.close();
-			
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -490,17 +487,19 @@ public class CompareWithGroundTruth {
 	}
 
 	public static void main(String[] args) {
-		 //CompareWithGroundTruth comparator = new CompareWithGroundTruth("/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/groundtruth",
-		 //"/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/10", "euclidean",
-		 //"/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/evaluation");
-		 
-		 CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/groundtruth",
-				 "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/10", "euclidean",
-				 "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/evaluation");
+		// CompareWithGroundTruth comparator = new
+		// CompareWithGroundTruth("/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/groundtruth",
+		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/10", "euclidean",
+		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/evaluation");
 
-		//CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/output/syn_data",
-		//		"E:/code/java/MP-HAT/mp-hat/output/syn_data/10", "euclidean",
-		//		"E:/code/java/MP-HAT/mp-hat/output/syn_data/10/evaluation");
+		// CompareWithGroundTruth comparator = new
+		// CompareWithGroundTruth("E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/groundtruth",
+		// "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/10", "euclidean",
+		// "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/evaluation");
+
+		CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/syn_data",
+				"E:/code/java/MP-HAT/mp-hat/syn_data/10", "euclidean",
+				"E:/code/java/MP-HAT/mp-hat/syn_data/evaluation");
 		comparator.measureGoodness();
 	}
 

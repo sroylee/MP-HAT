@@ -6,7 +6,6 @@ ehthumbs.db
 Desktop.ini
 
 #output
-/mp-hat/output
 
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
@@ -52,3 +51,4 @@ Temporary Items
 #files
 /mp-hat/data/
 /mp-hat/bin/
+mp-hat/syn_data/

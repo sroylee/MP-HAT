@@ -7,4 +7,7 @@ public class Post {
 	public int topic; // assume each post only have one topic
 	public int[] wordTopics; // assume each post have multiple topics
 	public int platform; // platform of the post
+
+	// groundtruth
+	public int groundTruthTopic;
 }

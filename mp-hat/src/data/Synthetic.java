@@ -5,8 +5,11 @@ package data;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.math3.distribution.GammaDistribution;
@@ -17,7 +20,38 @@ import tool.StatTool;
 
 public class Synthetic {
 
+	private class Tuple implements Comparable<Tuple> {
+		private int intKey;
+		private double doubleValue;
+
+		public Tuple(int _intKey, double _doubleValue) {
+			intKey = _intKey;
+			doubleValue = _doubleValue;
+		}
+
+		public int getIntKey() {
+			return intKey;
+		}
+
+		public double getDoubleValue() {
+			return doubleValue;
+		}
+
+		@Override
+		public int compareTo(Tuple o) {
+			if (doubleValue < o.doubleValue) {
+				return -1;
+			} else if (doubleValue > o.doubleValue) {
+				return 1;
+			} else {
+				return 0;
+			}
+		}
+
+	}
+
 	private class Post {
+		public int topic;
 		public int platform;
 		public int[] words;
 	}
@@ -26,9 +60,11 @@ public class Synthetic {
 	private double userSkewness = 0.1;// together with mass, this means, for
 										// each user, 90% of her posts are about
 										// 10% of topics
-	private double topicSkewness = 0.001;// similarly, each topic focuses on 0.1%
-										// of words whose probabilities summing
-										// up to 99%
+	private double topicSkewness = 0.001;// similarly, each topic focuses on
+											// 0.1%
+											// of words whose probabilities
+											// summing
+											// up to 99%
 	private double singlePlatformProp = 0.3;
 	private double platformSkeness;
 
@@ -45,11 +81,11 @@ public class Synthetic {
 
 	public double sigma = 2.0;
 	public double delta = 2.0;
-	public double omega = 0.2;
+	public double omega = 1;
 
 	private Random rand = new Random(1);
 
-	private double lambda = 0.01;
+	private double lambda = 1;
 
 	private int[] nTopicCounts;
 
@@ -167,6 +203,7 @@ public class Synthetic {
 			// topic
 			int z = statTool.sampleMult(userInterest, false, rand);
 			nTopicCounts[z]++;
+			post.topic = z;
 			// platform
 			post.platform = statTool.sampleMult(platformPreference[z], false, rand);
 			// words
@@ -190,12 +227,23 @@ public class Synthetic {
 		double[][] authorities = new double[nUsers][nTopics];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				//GammaDistribution gammaDistribution = new GammaDistribution(sigma, userLatentFactors[u][z] / sigma);
-				//GammaDistribution gammaDistribution = new GammaDistribution(omega + userLatentFactors[u][z], userLatentFactors[u][z] / omega);
-				GammaDistribution gammaDistribution = new GammaDistribution(sigma, (userLatentFactors[u][z] /sigma) * omega);
-				//GammaDistribution gammaDistribution = new GammaDistribution(sigma, Math.sqrt(userLatentFactors[u][z]));
-				//GammaDistribution gammaDistribution = new GammaDistribution(sigma + userLatentFactors[u][z], Math.sqrt(userLatentFactors[u][z]));
-				authorities[u][z] = gammaDistribution.sample();
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(sigma, userLatentFactors[u][z] / sigma);
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(omega + userLatentFactors[u][z],
+				// userLatentFactors[u][z] / omega);
+				/*
+				 * GammaDistribution gammaDistribution = new
+				 * GammaDistribution(sigma, (userLatentFactors[u][z] / sigma) *
+				 * omega);
+				 */
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(sigma, Math.sqrt(userLatentFactors[u][z]));
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(sigma + userLatentFactors[u][z],
+				// Math.sqrt(userLatentFactors[u][z]));
+				// authorities[u][z] = gammaDistribution.sample();
+				authorities[u][z] = userLatentFactors[u][z];
 			}
 		}
 		return authorities;
@@ -205,35 +253,45 @@ public class Synthetic {
 		double[][] hubs = new double[nUsers][nTopics];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				//GammaDistribution gammaDistribution = new GammaDistribution(delta, userLatentFactors[u][z] / delta);
-				//GammaDistribution gammaDistribution = new GammaDistribution(omega + userLatentFactors[u][z] , userLatentFactors[u][z] / omega);
-				GammaDistribution gammaDistribution = new GammaDistribution(delta, (userLatentFactors[u][z] /delta) * omega);
-				//GammaDistribution gammaDistribution = new GammaDistribution(delta, Math.sqrt(userLatentFactors[u][z]));
-				//GammaDistribution gammaDistribution = new GammaDistribution(delta + userLatentFactors[u][z], Math.sqrt(userLatentFactors[u][z]));
-				hubs[u][z] = gammaDistribution.sample();
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(delta, userLatentFactors[u][z] / delta);
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(omega + userLatentFactors[u][z] ,
+				// userLatentFactors[u][z] / omega);
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(delta,
+				// (userLatentFactors[u][z] / delta) * omega);
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(delta, Math.sqrt(userLatentFactors[u][z]));
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(delta + userLatentFactors[u][z],
+				// Math.sqrt(userLatentFactors[u][z]));
+				// hubs[u][z] = gammaDistribution.sample();
+				hubs[u][z] = userLatentFactors[u][z];
 			}
 		}
 		return hubs;
 	}
 
-	private int genLink(int nTopics, double[] userAuthority, double[][] vPlatformPreference, double[] userHub,
-			double[][] uPlatformPreference, int platform) {
+	private double getLinkLikelihood(int nTopics, double[] userAuthority, double[][] vPlatformPreference,
+			double[] userHub, double[][] uPlatformPreference, int platform) {
 		double prod = 0;
 		for (int z = 0; z < nTopics; z++) {
 			prod += userHub[z] * uPlatformPreference[z][platform] * userAuthority[z] * vPlatformPreference[z][platform];
 		}
-
 		prod = MathTool.normalizationFunction(prod * lambda);
-		// System.out.println("p = " + p);
-		if (rand.nextDouble() < prod) {
-			return 1;
-		}
-		return 0;
+		return prod;
 	}
 
 	private HashMap<Integer, HashMap<Integer, HashSet<Integer>>> genNetwork(int nUsers, int nTopics, int nPlatforms,
 			double[][] userAuthorities, double[][] userHubs, double[][][] userPlatformPreference,
 			int[][] userActivePlatforms) {
+		double[][][] userRelativePlatformPreference = new double[nUsers][nTopics][];
+		for (int u = 0; u < nUsers; u++) {
+			for (int z = 0; z < nTopics; z++) {
+				userRelativePlatformPreference[u][z] = MathTool.softmax(userPlatformPreference[u][z]);
+			}
+		}
 		HashMap<Integer, HashMap<Integer, HashSet<Integer>>> followings = new HashMap<Integer, HashMap<Integer, HashSet<Integer>>>();
 		for (int u = 0; u < nUsers; u++) {
 			HashMap<Integer, HashSet<Integer>> uFollowings = new HashMap<Integer, HashSet<Integer>>();
@@ -242,17 +300,20 @@ public class Synthetic {
 					continue;
 				}
 				HashSet<Integer> upFollowings = new HashSet<Integer>();
+				List<Tuple> tuples = new ArrayList<Tuple>();
 				for (int v = 0; v < nUsers; v++) {
 					if (u == v)
 						continue;
 					if (userActivePlatforms[v][p] == 0) {
 						continue;
 					}
-					int link = genLink(nTopics, userAuthorities[v], userPlatformPreference[v], userHubs[u],
-							userPlatformPreference[u], p);
-					if (link == 1) {
-						upFollowings.add(v);
-					}
+					double prod = getLinkLikelihood(nTopics, userAuthorities[v], userRelativePlatformPreference[v],
+							userHubs[u], userRelativePlatformPreference[u], p);
+					tuples.add(new Tuple(v, prod));
+				}
+				Collections.sort(tuples);
+				for (int i = 0; i < tuples.size() * 0.2; i++) {
+					upFollowings.add(tuples.get(tuples.size() - i - 1).getIntKey());
 				}
 				uFollowings.put(p, upFollowings);
 			}
@@ -299,6 +360,8 @@ public class Synthetic {
 
 			int nPosts = 0;
 			BufferedWriter bw = new BufferedWriter(new FileWriter(String.format("%s/posts.csv", outputpath)));
+			BufferedWriter bw_topic = new BufferedWriter(
+					new FileWriter(String.format("%s/postTopics.csv", outputpath)));
 			BufferedWriter bw_empirical = new BufferedWriter(
 					new FileWriter(String.format("%s/syn_userEmpiricalTopicDistribution.csv", outputpath)));
 			for (int u = 0; u < nUsers; u++) {
@@ -322,6 +385,7 @@ public class Synthetic {
 					// batch
 					bw.write(",1");
 					bw.newLine();
+					bw_topic.write(String.format("%d,%d\n", u, post.topic));
 					nPosts++;
 				}
 
@@ -332,6 +396,7 @@ public class Synthetic {
 				bw_empirical.write("\n");
 			}
 			bw.close();
+			bw_topic.close();
 			bw_empirical.close();
 
 		} catch (Exception e) {
@@ -465,12 +530,29 @@ public class Synthetic {
 		saveGroundTruth(topics, userLatentFactors, userAuthorities, userHubs, userPlatformPreference, outputPath);
 	}
 
+	private void testTuple() {
+		List<Tuple> tuples = new ArrayList<Tuple>();
+		tuples.add(new Tuple(1, 0.1));
+		tuples.add(new Tuple(3, 0.3));
+		tuples.add(new Tuple(2, 0.2));
+		tuples.add(new Tuple(5, 0.5));
+		tuples.add(new Tuple(4, 0.4));
+
+		Collections.sort(tuples);
+		for (int i = 0; i < tuples.size(); i++) {
+			System.out.printf("i = %d key = %d value = %f\n", i, tuples.get(i).getIntKey(),
+					tuples.get(i).getDoubleValue());
+		}
+	}
+
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
-		//generator.genData(1000, 2, 10, 1000, "E:/code/java/MP-HAT/mp-hat/output/syn_data");
-		generator.genData(100, 2, 10, 10000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
-		//generator.genData(1000, 2, 10, 1000, "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
-		
-		System.out.printf("%f", Math.exp(Double.NEGATIVE_INFINITY));
+		// generator.testTuple();
+		generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
+		// generator.genData(100, 2, 10, 10000,
+		// "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
+		// generator.genData(1000, 2, 10, 1000,
+		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
+
 	}
 }
