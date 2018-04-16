@@ -50,6 +50,9 @@ public class MultiThreadMPHAT {
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
 	public static double lamda = 1;
+	public static double omega = 1.5; // regularization for authority 
+	public static double phi = 1.5; // regularization for hub
+	
 
 	public static Random rand;
 
@@ -131,6 +134,8 @@ public class MultiThreadMPHAT {
 				optAuthorities(threadStartIndex, threadEndIndex);
 			} else if (runOption.equals("optHubs")) {
 				optHubs(threadStartIndex, threadEndIndex);
+			} else if (runOption.equals("optPlatformPreferences")) {
+				optPlatformPreferences(threadStartIndex, threadEndIndex);
 			} else if (runOption.equals("topicSample")) {
 				topicSample(threadStartIndex, threadEndIndex);
 			} else if (runOption.equals("updateOpt")) {
@@ -173,6 +178,13 @@ public class MultiThreadMPHAT {
 			for (int u = startIndex; u < endIndex; u++)
 				altOptimize_Hubs(u);
 		}
+		
+		private void optPlatformPreferences(int startIndex, int endIndex) {
+			for (int u = startIndex; u < endIndex; u++)
+				for (int k =0; k<nTopics; k++){
+					altOptimize_PlatformPreference(u,k);
+				}
+		}
 
 		private void topicSample(int startIndex, int endIndex) {
 			for (int u = startIndex; u < endIndex; u++) {
@@ -195,6 +207,7 @@ public class MultiThreadMPHAT {
 					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 						currUser.optTopicalPlatformPreference[z][p] = currUser.topicalPlatformPreference[z][p];
 					}
+					
 				}
 			}
 		}
@@ -1110,7 +1123,7 @@ public class MultiThreadMPHAT {
 				// x
 			}
 		}
-		likelihood = nonFollowerLikelihood + followerLikelihood + postLikelihood;
+		likelihood = nonFollowerLikelihood + followerLikelihood + (phi * postLikelihood);
 
 		return likelihood;
 	}
@@ -1210,7 +1223,7 @@ public class MultiThreadMPHAT {
 			// Third term in eqn 26. Compute post likelihood
 			postLikelihood = ((sigma - 1) / x) - (sigma / currUser.topicalInterests[k]);
 		}
-		gradLikelihood = nonFollowerLikelihood + followerLikelihood + postLikelihood;
+		gradLikelihood = nonFollowerLikelihood + followerLikelihood + (phi*postLikelihood);
 
 		return gradLikelihood;
 	}
@@ -1371,7 +1384,7 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		likelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
+		likelihood = nonFollowingLikelihood + followingLikelihood + (omega*postLikelihood);
 		// likelihood = followingLikelihood;
 
 		return likelihood;
@@ -1480,7 +1493,7 @@ public class MultiThreadMPHAT {
 			postLikelihood = ((delta - 1) / x) - (delta / currUser.topicalInterests[k]);
 		}
 
-		gradLikelihood = nonFollowingLikelihood + followingLikelihood + postLikelihood;
+		gradLikelihood = nonFollowingLikelihood + followingLikelihood + (omega*postLikelihood);
 		// gradLikelihood = followingLikelihood;
 
 		return gradLikelihood;
@@ -1563,7 +1576,7 @@ public class MultiThreadMPHAT {
 	 * @param u
 	 * @return
 	 */
-	private double getLikelihood_platformPreference(int u, int k, double[] x) {
+	private static double getLikelihood_platformPreference(int u, int k, double[] x) {
 		// Refer to Eqn 28 in Learning paper for Formula
 		double linkLikelihood = 0;
 		double nonLinkLikelihood = 0;
@@ -1577,100 +1590,100 @@ public class MultiThreadMPHAT {
 		double temp;
 		double log2 = Math.log(2);
 		// First term in eqn 28. Compute link likelihood.
-		if (currUser.followings != null) {
-			for (int i = 0; i < currUser.followings.length; i++) {
-				int v = currUser.followings[i].followingIndex;
-				User following = dataset.users[v];
-				int p = currUser.followings[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * following.authorities[z]
-								* following.topicalRelativePlatformPreference[z][p];
-					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
-								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
-					}
-
-				}
-				HupAvp = HupAvp * lamda;
-				temp = Math.exp(-HupAvp);
-
-				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
-			}
-		}
-		if (currUser.followers != null) {
-			for (int i = 0; i < currUser.followers.length; i++) {
-				int v = currUser.followers[i].followerIndex;
-				User follower = dataset.users[v];
-				int p = currUser.followers[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
-					} else {
-						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
-					}
-				}
-				HupAvp = HupAvp * lamda;
-				temp = Math.exp(-HupAvp);
-
-				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
-			}
-		}
-
-		// Second term in eqn 28. Compute non link likelihood.
-		if (currUser.nonFollowings != null) {
-			for (int i = 0; i < currUser.nonFollowings.length; i++) {
-				int v = currUser.nonFollowings[i].followingIndex;
-				User nonFollowing = dataset.users[v];
-				int p = currUser.nonFollowings[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * nonFollowing.authorities[z]
-								* nonFollowing.topicalRelativePlatformPreference[z][p];
-					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
-								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
-					}
-				}
-				HupAvp = HupAvp * lamda;
-
-				nonLinkLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
-			}
-		}
-		if (currUser.nonFollowers != null) {
-			for (int i = 0; i < currUser.nonFollowers.length; i++) {
-				int v = currUser.nonFollowers[i].followerIndex;
-				User nonFollower = dataset.users[v];
-				int p = currUser.nonFollowers[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
-					} else {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
-					}
-				}
-				HupAvp = HupAvp * lamda;
-
-				nonLinkLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
-			}
-		}
-
+//		if (currUser.followings != null) {
+//			for (int i = 0; i < currUser.followings.length; i++) {
+//				int v = currUser.followings[i].followingIndex;
+//				User following = dataset.users[v];
+//				int p = currUser.followings[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * following.authorities[z]
+//								* following.topicalRelativePlatformPreference[z][p];
+//					} else {
+//						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+//								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
+//					}
+//
+//				}
+//				HupAvp = HupAvp * lamda;
+//				temp = Math.exp(-HupAvp);
+//
+//				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
+//			}
+//		}
+//		if (currUser.followers != null) {
+//			for (int i = 0; i < currUser.followers.length; i++) {
+//				int v = currUser.followers[i].followerIndex;
+//				User follower = dataset.users[v];
+//				int p = currUser.followers[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
+//					} else {
+//						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
+//					}
+//				}
+//				HupAvp = HupAvp * lamda;
+//				temp = Math.exp(-HupAvp);
+//
+//				linkLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
+//			}
+//		}
+//
+//		// Second term in eqn 28. Compute non link likelihood.
+//		if (currUser.nonFollowings != null) {
+//			for (int i = 0; i < currUser.nonFollowings.length; i++) {
+//				int v = currUser.nonFollowings[i].followingIndex;
+//				User nonFollowing = dataset.users[v];
+//				int p = currUser.nonFollowings[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * nonFollowing.authorities[z]
+//								* nonFollowing.topicalRelativePlatformPreference[z][p];
+//					} else {
+//						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+//								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
+//					}
+//				}
+//				HupAvp = HupAvp * lamda;
+//
+//				nonLinkLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+//			}
+//		}
+//		if (currUser.nonFollowers != null) {
+//			for (int i = 0; i < currUser.nonFollowers.length; i++) {
+//				int v = currUser.nonFollowers[i].followerIndex;
+//				User nonFollower = dataset.users[v];
+//				int p = currUser.nonFollowers[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
+//					} else {
+//						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
+//					}
+//				}
+//				HupAvp = HupAvp * lamda;
+//
+//				nonLinkLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+//			}
+//		}
+//
 		// Third term in eqn 28. Compute post likelihood.
 		double denominator = 0;
 		for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
@@ -1694,7 +1707,8 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		//likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		likelihood = postLikelihood + platformLikelihood;
 		// likelihood = linkLikelihood + nonLinkLikelihood;
 
 		return likelihood;
@@ -1711,7 +1725,7 @@ public class MultiThreadMPHAT {
 	 * @param x
 	 * @return
 	 */
-	private double gradLikelihood_platformPreference(int u, int k, int j, double x) {
+	private static double gradLikelihood_platformPreference(int u, int k, int j, double x) {
 		// Refer to Eqn 31 in Learning paper
 		double linkLikelihood = 0;
 		double nonLinkLikelihood = 0;
@@ -1747,148 +1761,148 @@ public class MultiThreadMPHAT {
 
 		double tempExpHA;
 		double tempGrad;
-		// First term in eqn 31. Compute link likelihood.
-		if (currUser.followings != null) {
-			for (int i = 0; i < currUser.followings.length; i++) {
-				int v = currUser.followings[i].followingIndex;
-				User following = dataset.users[v];
-				int p = currUser.followings[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * following.authorities[z]
-								* following.topicalRelativePlatformPreference[z][p];
-					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
-								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
-					}
-				}
-				HupAvp = HupAvp * lamda;
-				tempExpHA = Math.exp(-HupAvp);
-
-				if (p == j) {
-					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
-				} else {
-					tempGrad = -tempExps[p] * tempExps[j];
-				}
-				tempGrad /= sumExpSqr;
-				linkLikelihood += ((1 / (1 - tempExpHA)) * (-tempExpHA)
-						* (-lamda * currUser.hubs[k] * following.authorities[k]
-								* following.topicalRelativePlatformPreference[k][p] * tempGrad))
-						- ((1 / (tempExpHA + 1)) * tempExpHA * (-lamda * currUser.hubs[k] * following.authorities[k]
-								* following.topicalRelativePlatformPreference[k][p] * tempGrad));
-
-			}
-		}
-		if (currUser.followers != null) {
-			for (int i = 0; i < currUser.followers.length; i++) {
-				int v = currUser.followers[i].followerIndex;
-				User follower = dataset.users[v];
-				int p = currUser.followers[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
-					} else {
-						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
-					}
-				}
-				HupAvp = HupAvp * lamda;
-				tempExpHA = Math.exp(-HupAvp);
-
-				if (p == j) {
-					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
-				} else {
-					tempGrad = -tempExps[p] * tempExps[j];
-				}
-				tempGrad /= sumExpSqr;
-
-				linkLikelihood += ((1 / (1 - tempExpHA)) * (-tempExpHA)
-						* (-lamda * follower.hubs[k] * follower.topicalRelativePlatformPreference[k][p]
-								* currUser.authorities[k] * tempGrad))
-						- (1 / (tempExpHA + 1) * tempExpHA
-								* (-lamda * follower.hubs[k] * follower.topicalRelativePlatformPreference[k][p]
-										* currUser.authorities[k] * tempGrad));
-
-			}
-		}
-
-		// Second term in eqn 31. Compute non link likelihood.
-		if (currUser.nonFollowings != null) {
-			for (int i = 0; i < currUser.nonFollowings.length; i++) {
-				int v = currUser.nonFollowings[i].followingIndex;
-				User nonFollowing = dataset.users[v];
-				int p = currUser.nonFollowings[i].platform;
-
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * nonFollowing.authorities[z]
-								* nonFollowing.topicalRelativePlatformPreference[z][p];
-					} else {
-						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
-								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
-					}
-
-				}
-				HupAvp = HupAvp * lamda;
-				tempExpHA = Math.exp(-HupAvp);
-
-				if (p == j) {
-					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
-				} else {
-					tempGrad = -tempExps[p] * tempExps[j];
-				}
-				tempGrad /= sumExpSqr;
-
-				nonLinkLikelihood += (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
-						* nonFollowing.topicalRelativePlatformPreference[k][p] * tempGrad)
-						- ((1 / (tempExpHA + 1)) * tempExpHA * (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
-								* nonFollowing.topicalRelativePlatformPreference[k][p] * tempGrad));
-
-			}
-		}
-		if (currUser.nonFollowers != null) {
-			for (int i = 0; i < currUser.nonFollowers.length; i++) {
-				int v = currUser.nonFollowers[i].followerIndex;
-				User nonFollower = dataset.users[v];
-				int p = currUser.nonFollowers[i].platform;
-				// Compute H_u^p * A_v^p
-				double HupAvp = 0;
-				for (int z = 0; z < nTopics; z++) {
-					if (z == k) {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
-					} else {
-						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
-								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
-					}
-
-				}
-				HupAvp = HupAvp * lamda;
-				tempExpHA = Math.exp(-HupAvp);
-				if (p == j) {
-					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
-				} else {
-					tempGrad = -tempExps[p] * tempExps[j];
-				}
-				tempGrad /= sumExpSqr;
-
-				nonLinkLikelihood += (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
-						* currUser.authorities[k] * tempGrad)
-						- ((1 / (tempExpHA + 1)) * tempExpHA
-								* (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
-										* currUser.authorities[k] * tempGrad));
-			}
-
-		}
+//		// First term in eqn 31. Compute link likelihood.
+//		if (currUser.followings != null) {
+//			for (int i = 0; i < currUser.followings.length; i++) {
+//				int v = currUser.followings[i].followingIndex;
+//				User following = dataset.users[v];
+//				int p = currUser.followings[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * following.authorities[z]
+//								* following.topicalRelativePlatformPreference[z][p];
+//					} else {
+//						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+//								* following.authorities[z] * following.topicalRelativePlatformPreference[z][p];
+//					}
+//				}
+//				HupAvp = HupAvp * lamda;
+//				tempExpHA = Math.exp(-HupAvp);
+//
+//				if (p == j) {
+//					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+//				} else {
+//					tempGrad = -tempExps[p] * tempExps[j];
+//				}
+//				tempGrad /= sumExpSqr;
+//				linkLikelihood += ((1 / (1 - tempExpHA)) * (-tempExpHA)
+//						* (-lamda * currUser.hubs[k] * following.authorities[k]
+//								* following.topicalRelativePlatformPreference[k][p] * tempGrad))
+//						- ((1 / (tempExpHA + 1)) * tempExpHA * (-lamda * currUser.hubs[k] * following.authorities[k]
+//								* following.topicalRelativePlatformPreference[k][p] * tempGrad));
+//
+//			}
+//		}
+//		if (currUser.followers != null) {
+//			for (int i = 0; i < currUser.followers.length; i++) {
+//				int v = currUser.followers[i].followerIndex;
+//				User follower = dataset.users[v];
+//				int p = currUser.followers[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
+//					} else {
+//						HupAvp += follower.hubs[z] * follower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
+//					}
+//				}
+//				HupAvp = HupAvp * lamda;
+//				tempExpHA = Math.exp(-HupAvp);
+//
+//				if (p == j) {
+//					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+//				} else {
+//					tempGrad = -tempExps[p] * tempExps[j];
+//				}
+//				tempGrad /= sumExpSqr;
+//
+//				linkLikelihood += ((1 / (1 - tempExpHA)) * (-tempExpHA)
+//						* (-lamda * follower.hubs[k] * follower.topicalRelativePlatformPreference[k][p]
+//								* currUser.authorities[k] * tempGrad))
+//						- (1 / (tempExpHA + 1) * tempExpHA
+//								* (-lamda * follower.hubs[k] * follower.topicalRelativePlatformPreference[k][p]
+//										* currUser.authorities[k] * tempGrad));
+//
+//			}
+//		}
+//
+//		// Second term in eqn 31. Compute non link likelihood.
+//		if (currUser.nonFollowings != null) {
+//			for (int i = 0; i < currUser.nonFollowings.length; i++) {
+//				int v = currUser.nonFollowings[i].followingIndex;
+//				User nonFollowing = dataset.users[v];
+//				int p = currUser.nonFollowings[i].platform;
+//
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += currUser.hubs[z] * topicalRelativePlatformPreference[p] * nonFollowing.authorities[z]
+//								* nonFollowing.topicalRelativePlatformPreference[z][p];
+//					} else {
+//						HupAvp += currUser.hubs[z] * currUser.topicalRelativePlatformPreference[z][p]
+//								* nonFollowing.authorities[z] * nonFollowing.topicalRelativePlatformPreference[z][p];
+//					}
+//
+//				}
+//				HupAvp = HupAvp * lamda;
+//				tempExpHA = Math.exp(-HupAvp);
+//
+//				if (p == j) {
+//					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+//				} else {
+//					tempGrad = -tempExps[p] * tempExps[j];
+//				}
+//				tempGrad /= sumExpSqr;
+//
+//				nonLinkLikelihood += (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
+//						* nonFollowing.topicalRelativePlatformPreference[k][p] * tempGrad)
+//						- ((1 / (tempExpHA + 1)) * tempExpHA * (-lamda * currUser.hubs[k] * nonFollowing.authorities[k]
+//								* nonFollowing.topicalRelativePlatformPreference[k][p] * tempGrad));
+//
+//			}
+//		}
+//		if (currUser.nonFollowers != null) {
+//			for (int i = 0; i < currUser.nonFollowers.length; i++) {
+//				int v = currUser.nonFollowers[i].followerIndex;
+//				User nonFollower = dataset.users[v];
+//				int p = currUser.nonFollowers[i].platform;
+//				// Compute H_u^p * A_v^p
+//				double HupAvp = 0;
+//				for (int z = 0; z < nTopics; z++) {
+//					if (z == k) {
+//						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * topicalRelativePlatformPreference[p];
+//					} else {
+//						HupAvp += nonFollower.hubs[z] * nonFollower.topicalRelativePlatformPreference[z][p]
+//								* currUser.authorities[z] * currUser.topicalRelativePlatformPreference[z][p];
+//					}
+//
+//				}
+//				HupAvp = HupAvp * lamda;
+//				tempExpHA = Math.exp(-HupAvp);
+//				if (p == j) {
+//					tempGrad = tempExps[p] * sumExp - tempExps[p] * tempExps[j];
+//				} else {
+//					tempGrad = -tempExps[p] * tempExps[j];
+//				}
+//				tempGrad /= sumExpSqr;
+//
+//				nonLinkLikelihood += (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
+//						* currUser.authorities[k] * tempGrad)
+//						- ((1 / (tempExpHA + 1)) * tempExpHA
+//								* (-lamda * nonFollower.hubs[k] * nonFollower.topicalRelativePlatformPreference[k][p]
+//										* currUser.authorities[k] * tempGrad));
+//			}
+//
+//		}
 
 		// Third term in eqn 31. Compute post likelihood.
 		double firstSubTerm = 0;
@@ -1913,7 +1927,8 @@ public class MultiThreadMPHAT {
 			platformLikelihood += ((alpha - 1) / x) - (1 / theta);
 		}
 
-		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		//likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		likelihood = postLikelihood + platformLikelihood;
 		// likelihood = linkLikelihood + nonLinkLikelihood;
 
 		return likelihood;
@@ -1925,7 +1940,7 @@ public class MultiThreadMPHAT {
 	 * 
 	 * @param u
 	 */
-	private void altOptimize_PlatformPreference(int u, int k) {
+	private static void altOptimize_PlatformPreference(int u, int k) {
 		// the topical platform preferences is a 2D array
 
 		double[] grad = new double[Configure.NUM_OF_PLATFORM];
@@ -2724,14 +2739,26 @@ public class MultiThreadMPHAT {
 			// platform preference
 			if (learnUserPlatformPreference) {
 				System.out.printf("[iter-%d] optimizing users' platform preference\n", iter);
-				// TODO: parallelizable???
-				for (int u = 0; u < dataset.nUsers; u++) {
-					for (int k = 0; k < nTopics; k++) {
-						altOptimize_PlatformPreference(u, k);
-					}
+				executor = Executors.newFixedThreadPool(nParallelThreads);
+				for (int i = 0; i < nParallelThreads; i++) {
+					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i], "optPlatformPreferences");
+					executor.execute(worker);
 				}
-				System.out.printf("[iter-%d] after learning platform preference likelihood = %f\n", iter,
-						getLikelihood_parallel());
+				executor.shutdown();
+				while (!executor.isTerminated()) {
+					// do nothing, just wait for the threads to finish
+				}
+				System.out.printf("[iter-%d] after learning hub likelihood = %f\n", iter, getLikelihood_parallel());
+				
+				
+				// TODO: parallelizable???
+//				for (int u = 0; u < dataset.nUsers; u++) {
+//					for (int k = 0; k < nTopics; k++) {
+//						altOptimize_PlatformPreference(u, k);
+//					}
+//				}
+//				System.out.printf("[iter-%d] after learning platform preference likelihood = %f\n", iter,
+//						getLikelihood_parallel());
 			}
 
 			// Gibbs part that employ topic sampling
@@ -3018,8 +3045,8 @@ public class MultiThreadMPHAT {
 		//String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
-		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/instagram";
-		int nTopics = 4;
+		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
+		int nTopics = 15;
 		int batch = 1;
 
 		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch);

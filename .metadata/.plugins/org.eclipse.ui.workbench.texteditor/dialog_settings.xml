@@ -2,20 +2,20 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="getGlobalTopicInterestMin" key="selection"/>
+		<item value="updateOptimalParams" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="updateOptimalParams"/>
+			<item value="eqn 19"/>
+			<item value="theta"/>
 			<item value="getGlobalTopicInterestMin"/>
 			<item value="gibbsInitUser"/>
 			<item value="gibbsInitAuthorityHubPlatformPreference"/>
 			<item value="randomInitUser"/>
 			<item value="min"/>
-			<item value="randomInitAuthorityHubPlatformPreference"/>
-			<item value="flag"/>
-			<item value="loadUserDirectedNeighbors"/>
 		</list>
 		<list key="replacehistory">
 			<item value="HAT"/>
