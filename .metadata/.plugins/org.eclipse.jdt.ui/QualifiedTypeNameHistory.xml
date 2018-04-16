@@ -5,4 +5,5 @@
 <fullyQualifiedTypeName name="java.lang.Math"/>
 <fullyQualifiedTypeName name="tool.MathTool"/>
 <fullyQualifiedTypeName name="model.Configure"/>
+<fullyQualifiedTypeName name="model.MultiThreadMPHAT"/>
 </qualifiedTypeNameHistroy>

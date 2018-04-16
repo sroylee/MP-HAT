@@ -81,7 +81,8 @@ public class Synthetic {
 
 	public double sigma = 2.0;
 	public double delta = 2.0;
-	public double omega = 1;
+	public double omega = 1.0;
+	public double epsilon = 0.000001;
 
 	private Random rand = new Random(1);
 
@@ -119,6 +120,9 @@ public class Synthetic {
 
 			for (int z = 0; z < nTopics; z++) {
 				userLatentFactor[u][z] = Math.log(norm * userLatentFactor[u][z]);
+				if (userLatentFactor[u][z] < epsilon){
+					userLatentFactor[u][z] = epsilon;
+				}		
 			}
 		}
 		return userLatentFactor;
@@ -242,8 +246,14 @@ public class Synthetic {
 				// GammaDistribution gammaDistribution = new
 				// GammaDistribution(sigma + userLatentFactors[u][z],
 				// Math.sqrt(userLatentFactors[u][z]));
-				// authorities[u][z] = gammaDistribution.sample();
+				
+				 //GammaDistribution gammaDistribution = new GammaDistribution(sigma, (userLatentFactors[u][z] / sigma) * omega);
+				 //authorities[u][z] = gammaDistribution.sample();
+				 
 				authorities[u][z] = userLatentFactors[u][z];
+				if (authorities[u][z] < epsilon){
+					 authorities[u][z] = epsilon;
+					}
 			}
 		}
 		return authorities;
@@ -267,7 +277,13 @@ public class Synthetic {
 				// GammaDistribution(delta + userLatentFactors[u][z],
 				// Math.sqrt(userLatentFactors[u][z]));
 				// hubs[u][z] = gammaDistribution.sample();
+				//GammaDistribution gammaDistribution = new GammaDistribution(delta, (userLatentFactors[u][z] / delta) * omega);
+				//hubs[u][z] = gammaDistribution.sample();
+				
 				hubs[u][z] = userLatentFactors[u][z];
+				if (hubs[u][z] < epsilon){
+					hubs[u][z] = epsilon;
+					}
 			}
 		}
 		return hubs;
@@ -548,9 +564,8 @@ public class Synthetic {
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		// generator.testTuple();
-		generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
-		// generator.genData(100, 2, 10, 10000,
-		// "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
+		//generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
+		 generator.genData(1000, 2, 10, 10000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
 

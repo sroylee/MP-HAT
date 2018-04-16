@@ -492,14 +492,14 @@ public class CompareWithGroundTruth {
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/10", "euclidean",
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/evaluation");
 
-		// CompareWithGroundTruth comparator = new
-		// CompareWithGroundTruth("E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/groundtruth",
-		// "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/10", "euclidean",
-		// "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/evaluation");
+		CompareWithGroundTruth comparator = new
+		CompareWithGroundTruth("E:/users/roylee.2013/MP-HAT/mp-hat/syn_data",
+		"E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/10", "euclidean",
+		"E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/evaluation");
 
-		CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/syn_data",
-				"E:/code/java/MP-HAT/mp-hat/syn_data/10", "euclidean",
-				"E:/code/java/MP-HAT/mp-hat/syn_data/evaluation");
+		//CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/syn_data",
+		//		"E:/code/java/MP-HAT/mp-hat/syn_data/10", "euclidean",
+		//		"E:/code/java/MP-HAT/mp-hat/syn_data/evaluation");
 		comparator.measureGoodness();
 	}
 

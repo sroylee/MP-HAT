@@ -18,7 +18,7 @@ public class Configure {
 		HATS, //our new model
 	}
 
-	public final static int NUM_OF_PLATFORM = 2;
+	public final static int NUM_OF_PLATFORM = 1;
 	public final static double PROPTION_OF_POPULAR_USERS = 0.1;
 	public final static double PROPTION_OF_NONLINKS = 0.25; // we choose about 10 times the size of the number of links in each dataset
 }

@@ -7,5 +7,6 @@
 <listEntry value="1"/>
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="model.MultiThreadMPHAT"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="predict E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/Instagram  E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/Instagram/4 TwitterLDA Test 4 0 0 E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/Instagram/predict"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="mp-hat"/>
 </launchConfiguration>
