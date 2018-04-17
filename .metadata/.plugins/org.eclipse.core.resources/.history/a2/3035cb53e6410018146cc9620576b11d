@@ -565,7 +565,7 @@ public class Synthetic {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		// generator.testTuple();
 		//generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
-		 generator.genData(100, 2, 10, 10000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
+		 generator.genData(1000, 2, 10, 10000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
 

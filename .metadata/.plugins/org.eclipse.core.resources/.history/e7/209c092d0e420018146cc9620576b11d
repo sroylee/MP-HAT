@@ -33,7 +33,7 @@ public class MultiThreadMPHAT {
 	private static boolean learnUserInterest = true;
 	private static boolean learnUserAuthority = true;
 	private static boolean learnUserHub = true;
-	private static boolean learnUserPlatformPreference = false;
+	private static boolean learnUserPlatformPreference = true;
 
 	private static boolean usePrior = true;
 
