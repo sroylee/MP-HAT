@@ -29,11 +29,11 @@ public class MultiThreadMPHAT {
 	private static boolean initByTopicModeling = true;
 	private static boolean InitPlatformPreferenceByTopicModeling = false;
 	private static boolean onlyLearnGibbs = false;
-	private static boolean learnTopic = true;
+	private static boolean learnTopic = false;
 	private static boolean learnUserInterest = true;
 	private static boolean learnUserAuthority = true;
 	private static boolean learnUserHub = true;
-	private static boolean learnUserPlatformPreference = false;
+	private static boolean learnUserPlatformPreference = true;
 
 	private static boolean usePrior = true;
 
@@ -2670,7 +2670,7 @@ public class MultiThreadMPHAT {
 
 		// start learning
 		if (onlyLearnGibbs) {
-			output_topicWord();
+			//output_topicWord();
 			output_topicInterest();
 			outputPostTopicTopWords(20);
 			getOptLikelihoodPerplexity();
@@ -2806,7 +2806,7 @@ public class MultiThreadMPHAT {
 			System.out.println();
 		}
 		// print out the learned parameters
-		output_topicWord();
+		//output_topicWord();
 		output_topicInterest();
 		output_platformPreference();
 		output_authority();
@@ -2879,7 +2879,7 @@ public class MultiThreadMPHAT {
 
 	public void output_platformPreference() {
 		try {
-			File f = new File(dataset.path + nTopics + "/omega_" + omega + "/l_userTopicalPlatformPreferenceDistributions.csv");
+			File f = new File(dataset.path +"/" + nTopics + "/omega_" + omega + "/l_userTopicalPlatformPreferenceDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -2901,7 +2901,7 @@ public class MultiThreadMPHAT {
 
 	public void output_authority() {
 		try {
-			File f = new File(dataset.path + nTopics + "/omega_" + omega + "/l_userAuthorityDistributions.csv");
+			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_userAuthorityDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -3046,12 +3046,13 @@ public class MultiThreadMPHAT {
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
-		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
+		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/combined";
+		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
-		int nTopics = 50;
+		int nTopics = 20;
 		int batch = 1;
-
 		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch);
+		
 
 		// model.getThreadIndexes();
 		// model.init();

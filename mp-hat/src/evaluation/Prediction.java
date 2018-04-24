@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.List;
 
+import model.Configure;
 import model.Configure.PredictionMode;
 
 public class Prediction {
@@ -23,9 +24,12 @@ public class Prediction {
 	private String modelMode;
 	private String setting;
 	private int nTopics;
+	private int nPlatforms;
 	private int testBatch;
 	private PredictionMode predMode;
 	private String outputPath;
+	//User platform
+	private HashMap<String, String> userPlatforms;
 	// CTRL model
 	private HashMap<String, double[]> userAuthorities;
 	private HashMap<String, double[]> userHubs;
@@ -52,6 +56,7 @@ public class Prediction {
 	private String[] testSrcUsers;
 	private String[] testDesUsers;
 	private int[] testLabels;
+	private int[] testPlatforms;
 	private double[] predictionScores;
 	private int maxOverallTopK;
 
@@ -60,13 +65,14 @@ public class Prediction {
 	 * 
 	 * @param dataPath
 	 */
-	public Prediction(String _path, String _resultPath, String _modelMode, String _setting, int _nTopics,
+	public Prediction(String _path, String _resultPath, String _modelMode, String _setting, int _nTopics, int _nPlatforms,
 			int _testBatch, PredictionMode _predMode, String _outputPath) {
 		this.dataPath = _path;
 		this.resultPath = _resultPath;
 		this.modelMode = _modelMode;
 		this.setting = _setting;
 		this.nTopics = _nTopics;
+		this.nPlatforms = _nPlatforms;
 		this.testBatch = _testBatch;
 		this.predMode = _predMode;
 		if (predMode == PredictionMode.HAT) {
@@ -105,7 +111,8 @@ public class Prediction {
 		//int neighhorSize = loadUserNeighbors(relationshipFile);
 		int neighhorSize = loadUserDirectedNeighbors(relationshipFile);
 		System.out.println("loaded neighbors of " + neighhorSize + " users");
-		loadTestData(relationshipFile, userFile);
+		//loadTestData(relationshipFile, userFile);
+		loadTestDataMultiplePlatform(relationshipFile, userFile);
 		//output_NonLinks();
 		
 		if (predMode == PredictionMode.HAT) {
@@ -146,8 +153,9 @@ public class Prediction {
 		}
 
 		output_PredictionScores();
-		output_EvaluateOverallPrecisionRecall(5, maxOverallTopK);
-		output_EvaluateUserLevelPrecisionRecall(5);
+		//output_EvaluateOverallPrecisionRecall(5, maxOverallTopK);
+		//output_EvaluateUserLevelPrecisionRecall(5);
+		output_EvaluatePlatformSpecificUserLevelPrecisionRecall(5);
 		
 	}
 
@@ -451,7 +459,7 @@ public class Prediction {
 				String vid = tokens[1];
 				String link = uid.trim()+" "+vid.trim();
 				userAllPositiveLinks.put(link, link);
-				int batch = Integer.parseInt(tokens[3]);
+				int batch = Integer.parseInt(tokens[2]);
 				if (batch == testBatch) {
 					maxOverallTopK++;
 					nTest++;
@@ -463,7 +471,6 @@ public class Prediction {
 					}
 				}
 			}
-			System.out.println("TestPostLinkSize="+userTestPositiveLinks.size());
 			br.close();
 			
 			//find non-links with common neighbor (2-hops)
@@ -506,50 +513,7 @@ public class Prediction {
 					}
 				}
 			}
-			System.out.println("userTestNegativeLinks="+userTestNegativeLinks.size());
-			
-//			//find non-links with common neighbor (2-hops)
-//			String nonLink = "";
-//			for (int u=0; u<users.length; u++){
-//				String uid = users[u];
-//				for (int v=0; v<users.length; v++){
-//					String vid = users[v];
-//					nonLink = uid.trim() + " " + vid.trim();
-//					if (u==v){
-//						continue;
-//					}
-//					if (userNeighbors.containsKey(uid) == false){
-//						continue;
-//					} 
-//					if(userNeighbors.containsKey(vid) == false){
-//						continue;
-//					}
-//					if (userAllPositiveLinks.containsKey(nonLink)){
-//						continue;
-//					}
-//			
-//					HashSet<String> uNeighborsSet = userNeighbors.get(uid);
-//					HashSet<String> vNeighborsSet = userNeighbors.get(vid);
-//					HashSet<String> unionSet = new HashSet<String>();
-//					unionSet.addAll(uNeighborsSet);
-//					unionSet.addAll(vNeighborsSet);
-//					HashSet<String> intersectionSet = new HashSet<String>();
-//					intersectionSet.addAll(uNeighborsSet);
-//					intersectionSet.retainAll(vNeighborsSet);
-//					float score = (float) intersectionSet.size() / (float) unionSet.size();
-//					if (score>=0.008){
-//						nTest++;
-//						userNonLinks.put(nonLink, nonLink);
-//						if(userTestNegativeLinks.containsKey(uid)){
-//							int count = userTestNegativeLinks.get(uid)+1;
-//							userTestNegativeLinks.put(uid,count);
-//						} else {
-//							userTestNegativeLinks.put(uid,1);
-//						}
-//					}
-//				}
-//			}
-			
+						
 			testSrcUsers = new String[nTest];
 			testDesUsers = new String[nTest];
 			testLabels = new int[nTest];
@@ -573,7 +537,7 @@ public class Prediction {
 				String[] tokens = line.split(",");
 				String uid = tokens[0];
 				String vid = tokens[1];
-				int batch = Integer.parseInt(tokens[3]);
+				int batch = Integer.parseInt(tokens[2]);
 				if (batch == testBatch) {
 					testSrcUsers[iTest] = uid;
 					testDesUsers[iTest] = vid;
@@ -591,7 +555,168 @@ public class Prediction {
 			System.exit(0);
 		}
 	}
+	
+	private void loadTestDataMultiplePlatform(String _relationshipFile, String _userFile){
+		BufferedReader br = null;
+		String line = null;
+		int nUser =0;
+		nTest = 0;
+		maxOverallTopK = 0;
+		userPlatforms =  new HashMap<String, String>();
+		userTestPositiveLinks = new HashMap<String, Integer>();
+		userAllPositiveLinks =  new HashMap<String, String>();
+		userNonLinks =  new HashMap<String, String>();
+		userTestNegativeLinks = new HashMap<String, Integer>();
 		
+		try {
+			File userFile = new File(_userFile);
+			br = new BufferedReader(new FileReader(userFile.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				nUser++;
+			}
+			br.close();
+			
+			users = new String[nUser];
+			
+			int iUser=0;
+			br = new BufferedReader(new FileReader(userFile.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				users[iUser] = tokens[0];
+				String platforms = "";
+				for (int p = 0; p < nPlatforms; p++) {
+					platforms = platforms + tokens[2+p] + " ";
+				}
+				platforms = platforms.trim();
+				userPlatforms.put(users[iUser],platforms);
+				iUser++;
+			}
+			br.close();
+			
+			File linkFile = new File(_relationshipFile);
+			br = new BufferedReader(new FileReader(linkFile.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String uid = tokens[0];
+				String vid = tokens[1];
+				String platform = tokens[2];
+				int batch = Integer.parseInt(tokens[3]);
+				String link = uid.trim()+" "+vid.trim()+" "+platform.trim();
+				userAllPositiveLinks.put(link, link);
+				if (batch == testBatch) {
+					maxOverallTopK++;
+					nTest++;
+					String key = uid.trim()+"_"+platform.trim();
+					if (userTestPositiveLinks.containsKey(key)) {
+						int count = userTestPositiveLinks.get(key) + 1;
+						userTestPositiveLinks.put(key, count);
+					} else {
+						userTestPositiveLinks.put(key, 1);
+					}
+				}
+			}
+			System.out.println("TestPostLinkSize="+userTestPositiveLinks.size());
+			br.close();
+			
+			//find non-links with common neighbor (2-hops)
+			for (int p = 0; p < nPlatforms; p++) {
+				String nonLink = "";
+				for (int u=0; u<users.length; u++){
+					String uid = users[u];
+					String[] uPlatform = userPlatforms.get(uid).split(" ");
+					
+					for (int v=0; v<users.length; v++){
+						String vid = users[v];
+						String[] vPlatform = userPlatforms.get(vid).split(" ");
+						nonLink = uid.trim() + " " + vid.trim()+" "+p;
+						
+						if (u==v){
+							continue;
+						}
+						if (userFollowers.containsKey(uid) == false){
+							continue;
+						} 
+						if(userFollowees.containsKey(vid) == false){
+							continue;
+						}
+						if (userAllPositiveLinks.containsKey(nonLink)){
+							continue;
+						}
+						
+						if(uPlatform[p].equals(vPlatform[p])){
+							
+							HashSet<String> uNeighborsSet = userFollowers.get(uid);
+							HashSet<String> vNeighborsSet = userFollowees.get(vid);
+							HashSet<String> intersectionSet = new HashSet<String>();
+							intersectionSet.addAll(uNeighborsSet);
+							intersectionSet.retainAll(vNeighborsSet);
+							if (intersectionSet.size()>=1){
+								nTest++;
+								userNonLinks.put(nonLink, nonLink);
+								String key = uid.trim()+"_"+p;
+								if(userTestNegativeLinks.containsKey(key)){
+									int count = userTestNegativeLinks.get(key)+1;
+									userTestNegativeLinks.put(key,count);
+								} else {
+									userTestNegativeLinks.put(key,1);
+								}
+							}
+						}
+				
+						
+					}
+				}
+				
+			}
+			
+			System.out.println("userTestNegativeLinks="+userTestNegativeLinks.size());
+			
+			testSrcUsers = new String[nTest];
+			testDesUsers = new String[nTest];
+			testLabels = new int[nTest];
+			testPlatforms = new int[nTest];
+			predictionScores = new double[nTest];
+			
+			int iTest = 0;
+			Iterator it = userNonLinks.entrySet().iterator();
+		    while (it.hasNext()) {
+		        Map.Entry pair = (Map.Entry)it.next();
+		        String[] nonLinkPair = pair.getValue().toString().split(" ");
+		        testSrcUsers[iTest] = nonLinkPair[0];
+				testDesUsers[iTest] = nonLinkPair[1];
+				testPlatforms[iTest] = Integer.parseInt(nonLinkPair[2]);
+				testLabels[iTest] = 0;
+				iTest++;
+		    }
+			
+			System.out.println("Generated " + iTest + " non links");
+
+			br = new BufferedReader(new FileReader(linkFile.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String uid = tokens[0];
+				String vid = tokens[1];
+				int platform = Integer.parseInt(tokens[2]);
+				int batch = Integer.parseInt(tokens[3]);
+				if (batch == testBatch) {
+					testSrcUsers[iTest] = uid;
+					testDesUsers[iTest] = vid;
+					testPlatforms[iTest] = platform;
+					testLabels[iTest] = 1;
+					iTest++;
+				}
+			}
+			br.close();
+
+			System.out.println("Loaded " + nTest + " links");
+
+		} catch (Exception e) {
+			System.out.println("Error in reading user file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
 	private void computeHATScores() {
 		String uid = "";
 		String vid = "";
@@ -612,6 +737,7 @@ public class Prediction {
 		}
 	}
 
+	
 	private void computeCTRScores() {
 		String uid = null;
 		String vid = null;
@@ -635,6 +761,7 @@ public class Prediction {
 		}
 	}
 
+	
 	private void computeCommonInterestScores() {
 		String uid = "";
 		String vid = "";
@@ -654,6 +781,7 @@ public class Prediction {
 		}
 	}
 
+	
 	private void computeCommonNeighborScores() {
 		String uid = "";
 		String vid = "";
@@ -680,6 +808,7 @@ public class Prediction {
 		}
 	}
 	
+	
 	private void computeCommonDirectedNeighborScores() {
 		String uid = "";
 		String vid = "";
@@ -705,6 +834,7 @@ public class Prediction {
 			predictionScores[i] = (float) intersectionSet.size() / (float) unionSet.size();
 		}
 	}
+	
 	
 	private void computeHITSScores() {
 		String uid = "";
@@ -737,6 +867,123 @@ public class Prediction {
 			e.printStackTrace();
 			System.exit(0);
 		}
+	}
+	
+	
+	private void output_EvaluatePlatformSpecificUserLevelPrecisionRecall(int k){
+		double[] precision = new double[k];
+		double[] recall = new double[k];
+
+		HashMap<String, ArrayList<Integer>> UserLinkLabels = new HashMap<String, ArrayList<Integer>>();
+		for (int u = 0; u < testSrcUsers.length; u++) {
+			String uid = testSrcUsers[u];
+			int platform = testPlatforms[u];
+			String key = uid.trim()+"_"+platform;
+			UserLinkLabels.put(key, new ArrayList<Integer>());
+		}
+
+		Map<Integer, Double> mapPredictionScores = new HashMap<Integer, Double>();
+		for (int s = 0; s < predictionScores.length; s++) {
+			mapPredictionScores.put(s, predictionScores[s]);
+		}
+		List<Entry<Integer, Double>> sortedScores = sortByValue(mapPredictionScores);
+		for (Map.Entry<Integer, Double> entry : sortedScores) {
+			int index = entry.getKey();
+			String uid = testSrcUsers[index];
+			int platform = testPlatforms[index];
+			String key = uid.trim()+"_"+platform;
+			UserLinkLabels.get(key).add(testLabels[index]);
+		}
+		
+		for (int p = 0; p < nPlatforms; p++) {
+			for (int i = 0; i < k; i++) {
+				int checkPosCount = 0;
+				int currK = i + 1;
+				float sumPrecision = 0;
+				float sumRecall = 0;
+				int count = 0;
+				for (int u=0; u<users.length; u++){
+					String uid = users[u];
+					String[] uPlatform = userPlatforms.get(uid).split(" ");
+					if (uPlatform[p].equals("1")){
+						int posCount = 0;
+						String key = uid.trim()+"_"+p;
+						if (userTestPositiveLinks.containsKey(key) && userTestPositiveLinks.get(key) >= currK) {
+							if (userTestNegativeLinks.containsKey(key) && userTestNegativeLinks.get(key)>=currK){
+								checkPosCount += userTestPositiveLinks.get(key);
+								count++;
+								ArrayList<Integer> labels = UserLinkLabels.get(key);
+								for (int j = 0; j < currK; j++) {
+									if (labels.get(j) == 1) {
+										posCount++;
+									}
+								}
+								sumPrecision += (float) posCount / (float) currK;
+								sumRecall += (float) posCount / (float) userTestPositiveLinks.get(key);
+							}
+						}
+					}
+					
+				}
+				System.out.println("#PositiveLinks@"+k+": "+checkPosCount);
+				precision[i] = sumPrecision / count;
+				recall[i] = sumRecall / count;
+				
+			}
+
+			int[] rank = new int[users.length];
+			int iRank = 0;
+			for (int u=0; u<users.length; u++){
+				String uid = users[u];	
+				String[] uPlatform = userPlatforms.get(uid).split(" ");
+				if (uPlatform[p].equals("1")){
+					rank[iRank] = 0;
+					int posCount = 0;
+					String key = uid.trim()+"_"+p;
+					if (userTestPositiveLinks.containsKey(key) && userTestNegativeLinks.containsKey(key)) {
+						ArrayList<Integer> labels = UserLinkLabels.get(key);
+						for (int j = 0; j < labels.size(); j++) {
+							if (labels.get(j) == 1) {
+								posCount++;
+								if (posCount == 1) {
+									rank[iRank] = j + 1;
+									break;
+								}
+							}
+						}
+					}
+					iRank++;
+				}
+			}
+			
+			double sumMRR = 0f;
+			double mrr = 0f;
+			int countMRR = 0;
+			for (int i = 0; i < rank.length; i++) {
+				if (rank[i] != 0) {
+					sumMRR += (double) 1 / (double) rank[i];
+					countMRR++;
+				}
+			}
+			mrr = sumMRR / countMRR;
+
+			try {
+				File f = new File(outputPath + "/" + p + "_" + predMode + "_UserLevel_PrecisionRecall.csv");
+				FileWriter fo = new FileWriter(f, false);
+
+				for (int i = 0; i < k; i++) {
+					fo.write(i + "," + precision[i] + "," + recall[i] + "\n");
+				}
+				fo.write("MRR," + mrr + "," + mrr + "\n");
+				fo.close();
+				fo.close();
+			} catch (Exception e) {
+				System.out.println("Error in writing out post topic top words to file!");
+				e.printStackTrace();
+				System.exit(0);
+			}
+		}
+		
 	}
 	
 	private void output_EvaluateOverallPrecisionRecall(int k, int totalPositive) {
@@ -885,6 +1132,7 @@ public class Prediction {
 		}
 
 	}
+	
 	
 	private <K, V extends Comparable<? super V>> List<Entry<K, V>> sortByValue(Map<K, V> map) {
 		List<Entry<K, V>> sortedEntries = new ArrayList<Entry<K, V>>(map.entrySet());
