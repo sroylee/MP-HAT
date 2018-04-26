@@ -278,7 +278,7 @@ public class Prediction {
 		userPlatformPreferences = new HashMap<String, double[][]>();
 		
 		//initialize values
-		for (int i=0; i<=users.length; i++){
+		for (int i=0; i<users.length; i++){
 			preferences = new double[nTopics][nPlatforms];
 			for (int z=0; z<nTopics; z++){
 				for (int p=0; p<nPlatforms; p++){
