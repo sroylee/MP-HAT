@@ -15,7 +15,7 @@ public class Configure {
 		COMMON_NEIGHBOR, // Using Jaccard Coefficient of u and v common
 							// neighborhood
 		HITS,
-		HATS, //our new model
+		MPHAT, //our new model
 	}
 
 	public final static int NUM_OF_PLATFORM = 2;

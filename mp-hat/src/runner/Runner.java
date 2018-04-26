@@ -79,6 +79,8 @@ public class Runner {
 					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.CTR, outputPath);
 				} else if (predMode == 5) {
 					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.WTFW, outputPath);
+				} else if (predMode == 6) {
+					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.MPHAT, outputPath);
 				}
 			} else if (args[0].equals("hits")) {
 				String datasetPath = args[1];

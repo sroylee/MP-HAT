@@ -34,6 +34,8 @@ public class Prediction {
 	private HashMap<String, double[]> userAuthorities;
 	private HashMap<String, double[]> userHubs;
 	private HashMap<String, double[]> userInterests;
+	private HashMap<String, double[][]> userPlatformPreferences;
+	
 	// Common-Neighbor
 	private HashMap<String, HashSet<String>> userNeighbors;
 	private HashMap<String, HashSet<String>> userFollowers;
@@ -112,10 +114,32 @@ public class Prediction {
 		int neighhorSize = loadUserDirectedNeighbors(relationshipFile);
 		System.out.println("loaded neighbors of " + neighhorSize + " users");
 		//loadTestData(relationshipFile, userFile);
-		loadTestDataMultiplePlatform(relationshipFile, userFile);
+		
 		//output_NonLinks();
 		
-		if (predMode == PredictionMode.HAT) {
+		if (predMode == PredictionMode.MPHAT) {
+			loadTestDataMultiplePlatform(relationshipFile, userFile);
+			
+			String authFilePath = String.format("%s/%s/%s/%d/l_userAuthorityDistributions.csv", resultPath,
+					modelMode, setting, nTopics);
+			int authSize = loadUserAuthorities(authFilePath, nTopics);
+			System.out.println("loaded authorities of " + authSize + " users");
+
+			String hubFilePath = String.format("%s/%s/%s/%d/l_userHubDistributions.csv", resultPath, modelMode,
+					setting, nTopics);
+			int hubSize = loadUserHubs(hubFilePath, nTopics);
+			System.out.println("loaded hubs of " + hubSize + " users");
+			
+			String preferenceFilePath = String.format("%s/%s/%s/%d/l_userTopicalPlatformPreferenceDistributions.csv", resultPath, modelMode,
+					setting, nTopics);
+			int preferenceSize = loadUserPlatformPreferences(preferenceFilePath, nTopics, nPlatforms);
+			System.out.println("loaded platform of " + preferenceSize + " users");
+
+			System.out.println("compute prediction scores");
+			computeMPHATScores();
+
+		}else if (predMode == PredictionMode.HAT) {
+			loadTestData(relationshipFile, userFile);
 			String authFilePath = String.format("%s/%s/%s/%d/l_userAuthorityDistributions.csv", resultPath,
 					modelMode, setting, nTopics);
 			int authSize = loadUserAuthorities(authFilePath, nTopics);
@@ -130,11 +154,14 @@ public class Prediction {
 			computeHATScores();
 
 		} else if (predMode == PredictionMode.CTR) {
+			loadTestData(relationshipFile, userFile);
 			loadCTR();
 			computeCTRScores();
 		}
 
 		else if (predMode == PredictionMode.COMMON_INTEREST) {
+			loadTestData(relationshipFile, userFile);
+			
 			String interestFilePath = String.format("%s/%s/%s/%d/l_GibbUserTopicalInterestDistributions.csv", resultPath,
 					modelMode,setting, nTopics);
 			int interestSize = loadUserInterests(interestFilePath, nTopics);
@@ -143,12 +170,18 @@ public class Prediction {
 			System.out.println("compute prediction scores");
 			computeCommonInterestScores();
 		} else if (predMode == PredictionMode.COMMON_NEIGHBOR) {
+			loadTestData(relationshipFile, userFile);
+			
 			//computeCommonNeighborScores();
 			computeCommonDirectedNeighborScores();
 		} else if (predMode == PredictionMode.HITS) {
+			loadTestData(relationshipFile, userFile);
+			
 			loadTraditionalHITS(hitsFile);
 			computeHITSScores();
 		} else if (predMode == PredictionMode.WTFW) {
+			loadTestData(relationshipFile, userFile);
+			
 			loadWTFWScores(wtfwFile);
 		}
 
@@ -236,7 +269,48 @@ public class Prediction {
 		}
 		return userInterests.size();
 	}
+	
+	private int loadUserPlatformPreferences(String filename, int nTopics, int nPlatforms) {
+		BufferedReader br = null;
+		String line = null;
+		double[][] preferences;
+		double[] interests;
+		userPlatformPreferences = new HashMap<String, double[][]>();
+		
+		//initialize values
+		for (int i=0; i<=users.length; i++){
+			preferences = new double[nTopics][nPlatforms];
+			for (int z=0; z<=nTopics; z++){
+				for (int p=0; p<=nPlatforms; p++){
+					preferences[z][p] = 0;
+					userPlatformPreferences.put(users[i], preferences);
+				}
+			}
+		}
+		
+		try {
+			File interestFile = new File(filename);
+			br = new BufferedReader(new FileReader(interestFile.getAbsolutePath()));
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				String uid = tokens[0];
+				preferences = userPlatformPreferences.get(uid);
+				int topic = Integer.parseInt(tokens[1]);
+				for (int p=0; p<=nPlatforms; p++){
+					preferences[topic][p] = Double.parseDouble(tokens[p + 2]);
+				}
+				userPlatformPreferences.put(uid, preferences);
+			}
+			br.close();
+		} catch (Exception e) {
+			System.out.println("Error in reading user file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+		return userPlatformPreferences.size();
+	}
 
+	
 	private int loadUserNeighbors(String relationshipFile) {
 		BufferedReader br = null;
 		String line = null;
@@ -714,6 +788,32 @@ public class Prediction {
 			System.out.println("Error in reading user file!");
 			e.printStackTrace();
 			System.exit(0);
+		}
+	}
+	
+	private void computeMPHATScores() {
+		String uid = "";
+		String vid = "";
+		int platform =0;
+		double[] Hu;
+		double[] Av;
+		double [][] Eta_u;
+		double [][] Eta_v;
+		double HupAvp = 0;
+		for (int i = 0; i < testLabels.length; i++) {
+			uid = testSrcUsers[i];
+			vid = testDesUsers[i];
+			platform = testPlatforms[i];
+			Hu = userHubs.get(uid);
+			Av = userAuthorities.get(vid);
+			Eta_u = userPlatformPreferences.get(uid);
+			Eta_v = userPlatformPreferences.get(vid); 
+			HupAvp = 0;
+			for (int z = 0; z < Hu.length; z++) {
+				HupAvp += Hu[z]*Eta_u[z][platform] * Av[z]*Eta_v[z][platform];
+			}
+			predictionScores[i] = HupAvp;
+
 		}
 	}
 	
