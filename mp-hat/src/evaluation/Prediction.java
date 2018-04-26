@@ -280,8 +280,8 @@ public class Prediction {
 		//initialize values
 		for (int i=0; i<=users.length; i++){
 			preferences = new double[nTopics][nPlatforms];
-			for (int z=0; z<=nTopics; z++){
-				for (int p=0; p<=nPlatforms; p++){
+			for (int z=0; z<nTopics; z++){
+				for (int p=0; p<nPlatforms; p++){
 					preferences[z][p] = 0;
 					userPlatformPreferences.put(users[i], preferences);
 				}
@@ -296,7 +296,7 @@ public class Prediction {
 				String uid = tokens[0];
 				preferences = userPlatformPreferences.get(uid);
 				int topic = Integer.parseInt(tokens[1]);
-				for (int p=0; p<=nPlatforms; p++){
+				for (int p=0; p<nPlatforms; p++){
 					preferences[topic][p] = Double.parseDouble(tokens[p + 2]);
 				}
 				userPlatformPreferences.put(uid, preferences);
