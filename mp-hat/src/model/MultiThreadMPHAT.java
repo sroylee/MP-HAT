@@ -3042,14 +3042,14 @@ public class MultiThreadMPHAT {
 	}
 	
 	public static void main(String[] args) {
-		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/";
+		//String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
-		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
+		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
-		int nTopics = 10;
+		int nTopics = 12;
 		int batch = 1;
 		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch);
 		
