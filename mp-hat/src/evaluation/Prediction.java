@@ -62,27 +62,26 @@ public class Prediction {
 	 * 
 	 * @param dataPath
 	 */
-	public Prediction(String _path, String _resultPath, String _modelMode, String _setting, int _nTopics,
+	public Prediction(String _path, String _resultPath, int _nTopics,
 			int _nPlatforms, int _testBatch, PredictionMode _predMode, String _outputPath) {
 		this.dataPath = _path;
 		this.resultPath = _resultPath;
-		this.modelMode = _modelMode;
-		this.setting = _setting;
 		this.nTopics = _nTopics;
 		this.nPlatforms = _nPlatforms;
 		this.testBatch = _testBatch;
 		this.predMode = _predMode;
-		if (predMode == PredictionMode.HAT) {
-			this.outputPath = String.format("%s/%s/%s/%d", _outputPath, modelMode, setting, nTopics);
-		} else if (predMode == PredictionMode.WTFW) {
-			this.outputPath = String.format("%s/%d/%s", _outputPath, nTopics, setting);
-		} else if (predMode == PredictionMode.CTR) {
-			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-		} else if (predMode == PredictionMode.COMMON_INTEREST) {
-			this.outputPath = String.format("%s/%s/%s/%d", _outputPath, modelMode, setting, nTopics);
-		} else {
-			this.outputPath = _outputPath;
-		}
+		this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+//		if (predMode == PredictionMode.HAT) {
+//			this.outputPath = String.format("%s/%d",_outputPath, nTopics);
+//		} else if (predMode == PredictionMode.WTFW) {
+//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+//		} else if (predMode == PredictionMode.CTR) {
+//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+//		} else if (predMode == PredictionMode.COMMON_INTEREST) {
+//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+//		} else {
+//			this.outputPath = _outputPath;
+//		}
 
 		File theDir = new File(outputPath);
 
@@ -114,18 +113,16 @@ public class Prediction {
 		if (predMode == PredictionMode.MPHAT) {
 			loadTestData(relationshipFile, userFile);
 
-			String authFilePath = String.format("%s/%s/%s/%d/l_userAuthorityDistributions.csv", resultPath, modelMode,
-					setting, nTopics);
+			String authFilePath = String.format("%s/l_userAuthorityDistributions.csv", resultPath);
 			int authSize = loadUserAuthorities(authFilePath, nTopics);
 			System.out.println("loaded authorities of " + authSize + " users");
 
-			String hubFilePath = String.format("%s/%s/%s/%d/l_userHubDistributions.csv", resultPath, modelMode, setting,
-					nTopics);
+			String hubFilePath = String.format("%s/l_userHubDistributions.csv", resultPath);
 			int hubSize = loadUserHubs(hubFilePath, nTopics);
 			System.out.println("loaded hubs of " + hubSize + " users");
 
-			String preferenceFilePath = String.format("%s/%s/%s/%d/l_userTopicalPlatformPreferenceDistributions.csv",
-					resultPath, modelMode, setting, nTopics);
+			String preferenceFilePath = String.format("%s/l_userTopicalPlatformPreferenceDistributions.csv",
+					resultPath);
 			int preferenceSize = loadUserPlatformPreferences(preferenceFilePath, nTopics, nPlatforms);
 			System.out.println("loaded platform of " + preferenceSize + " users");
 
@@ -134,13 +131,11 @@ public class Prediction {
 
 		} else if (predMode == PredictionMode.HAT) {
 			loadTestData(relationshipFile, userFile);
-			String authFilePath = String.format("%s/%s/%s/%d/l_userAuthorityDistributions.csv", resultPath, modelMode,
-					setting, nTopics);
+			String authFilePath = String.format("%s/l_userAuthorityDistributions.csv", resultPath);
 			int authSize = loadUserAuthorities(authFilePath, nTopics);
 			System.out.println("loaded authorities of " + authSize + " users");
 
-			String hubFilePath = String.format("%s/%s/%s/%d/l_userHubDistributions.csv", resultPath, modelMode, setting,
-					nTopics);
+			String hubFilePath = String.format("%s/l_userHubDistributions.csv", resultPath);
 			int hubSize = loadUserHubs(hubFilePath, nTopics);
 			System.out.println("loaded hubs of " + hubSize + " users");
 
@@ -156,8 +151,8 @@ public class Prediction {
 		else if (predMode == PredictionMode.COMMON_INTEREST) {
 			loadTestData(relationshipFile, userFile);
 
-			String interestFilePath = String.format("%s/%s/%s/%d/l_GibbUserTopicalInterestDistributions.csv",
-					resultPath, modelMode, setting, nTopics);
+			String interestFilePath = String.format("%s/l_GibbUserTopicalInterestDistributions.csv",
+					resultPath);
 			int interestSize = loadUserInterests(interestFilePath, nTopics);
 			System.out.println("loaded interests of " + interestSize + " users");
 
