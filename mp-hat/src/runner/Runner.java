@@ -19,9 +19,9 @@ public class Runner {
 		model.train();
 	}
 
-	static void predict(String datasetPath, String resultPath, String mode, String setting, int nTopics, int nPlatforms,
+	static void predict(String datasetPath, String resultPath, int nTopics, int nPlatforms,
 			int testBatch, PredictionMode predMode, String outputPath) {
-		evaluation.Prediction prediction = new Prediction(datasetPath, resultPath, mode, setting, nTopics, nPlatforms,
+		evaluation.Prediction prediction = new Prediction(datasetPath, resultPath, nTopics, nPlatforms,
 				testBatch, predMode, outputPath);
 		prediction.evaluate();
 	}
@@ -59,33 +59,31 @@ public class Runner {
 			} else if (args[0].equals("predict")) {
 				String datasetPath = args[1];
 				String resultPath = args[2];
-				String mode = args[3];
-				String setting = args[4];
-				int topics = Integer.parseInt(args[5]);
-				int platforms = Integer.parseInt(args[6]);
-				int testBatch = Integer.parseInt(args[7]);
-				int predMode = Integer.parseInt(args[8]);
-				String outputPath = args[9];
+				int topics = Integer.parseInt(args[3]);
+				int platforms = Integer.parseInt(args[4]);
+				int testBatch = Integer.parseInt(args[5]);
+				int predMode = Integer.parseInt(args[6]);
+				String outputPath = args[7];
 				if (predMode == 0) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.HAT,
+					predict(datasetPath, resultPath, topics, platforms, testBatch, PredictionMode.HAT,
 							outputPath);
 				} else if (predMode == 1) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch,
+					predict(datasetPath, resultPath, topics, platforms, testBatch,
 							PredictionMode.COMMON_INTEREST, outputPath);
 				} else if (predMode == 2) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch,
+					predict(datasetPath, resultPath,  topics, platforms, testBatch,
 							PredictionMode.COMMON_NEIGHBOR, outputPath);
 				} else if (predMode == 3) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.HITS,
+					predict(datasetPath, resultPath, topics, platforms, testBatch, PredictionMode.HITS,
 							outputPath);
 				} else if (predMode == 4) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.CTR,
+					predict(datasetPath, resultPath, topics, platforms, testBatch, PredictionMode.CTR,
 							outputPath);
 				} else if (predMode == 5) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.WTFW,
+					predict(datasetPath, resultPath, topics, platforms, testBatch, PredictionMode.WTFW,
 							outputPath);
 				} else if (predMode == 6) {
-					predict(datasetPath, resultPath, mode, setting, topics, platforms, testBatch, PredictionMode.MPHAT,
+					predict(datasetPath, resultPath, topics, platforms, testBatch, PredictionMode.MPHAT,
 							outputPath);
 				}
 			} else if (args[0].equals("hits")) {
