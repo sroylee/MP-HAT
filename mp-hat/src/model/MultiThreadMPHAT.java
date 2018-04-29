@@ -2049,7 +2049,7 @@ public class MultiThreadMPHAT {
 		// p: p(z_u,s = z| rest)
 
 		double[] p = new double[nTopics];
-		double max = -Double.MAX_VALUE;		
+		double max = -Double.MAX_VALUE;
 		for (int z = 0; z < nTopics; z++) {
 			// User-topic
 			p[z] = currUser.topicalInterests[z];
@@ -2062,7 +2062,7 @@ public class MultiThreadMPHAT {
 			}
 
 			// preference
-			p[z] += Math.log(currUser.topicalRelativePlatformPreference[z][currPost.platform]);
+			p[z] += currUser.topicalPlatformPreference[z][currPost.platform];
 
 			// update min
 			if (max < p[z]) {
