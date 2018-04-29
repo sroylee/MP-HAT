@@ -34,7 +34,8 @@ public class MultiThreadMPHAT {
 	private static boolean learnUserAuthority = true;
 	private static boolean learnUserHub = true;
 	private static boolean learnUserPlatformPreference = true;
-	private static boolean useLinkInLearningPlatformPreference = false;	
+	private static boolean asynchronousParallelUserPlatformPreference = true;
+	private static boolean useLinkInLearningPlatformPreference = false;
 	private static boolean usePostInLearningPlatformPreference = true;
 
 	private static boolean usePrior = true;
@@ -367,16 +368,16 @@ public class MultiThreadMPHAT {
 		// value can be more than 1
 		// sum of eqn 1 -10
 		double linkLikelihood = 0;
-		double linkRelationshipLikelihood = 0;
-		double linkAuthorityLikelihood = 0;
-		double linkHubLikelihood = 0;
-		double linkPlatformLikelihood = 0;
+		double relationshipLikelihood = 0;
+		double authorityLikelihood = 0;
+		double hubLikelihood = 0;
+		double platformPreferencePrior = 0;
 		double postLikelihood = 0;
 		double postWordLikelihood = 0;
 		double postTopicLikelihood = 0;
 		double postPlatformLikelihood = 0;
-		double postXLikelihood = 0;
-		double postTauLikelihood = 0;
+		double latentFactorPrior = 0;
+		double topicPrior = 0;
 
 		double temp;
 		double log2 = Math.log(2);
@@ -401,7 +402,7 @@ public class MultiThreadMPHAT {
 					// Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp) + 1);
 
 					temp = Math.exp(-HupAvp);
-					linkRelationshipLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
+					relationshipLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 				}
 			}
 			if (currUser.followers != null) {
@@ -422,7 +423,7 @@ public class MultiThreadMPHAT {
 					// Math.exp(-HupAvp)) - Math.log(Math.exp(-HupAvp) + 1);
 
 					temp = Math.exp(-HupAvp);
-					linkRelationshipLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
+					relationshipLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 				}
 
 			}
@@ -442,7 +443,7 @@ public class MultiThreadMPHAT {
 					HupAvp = HupAvp * lamda;
 					// linkRelationshipLikelihood += Math.log(2) - HupAvp -
 					// Math.log(Math.exp(-HupAvp) + 1);
-					linkRelationshipLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+					relationshipLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
 
 				}
 			}
@@ -464,40 +465,26 @@ public class MultiThreadMPHAT {
 					// linkRelationshipLikelihood += Math.log(2) - HupAvp -
 					// Math.log(Math.exp(-HupAvp) + 1);
 
-					linkRelationshipLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
+					relationshipLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
 				}
 			}
-			if (usePrior) {
-				for (int k = 0; k < nTopics; k++) {
-					// authority prior
-					linkAuthorityLikelihood += ((sigma - 1) * Math.log(currUser.authorities[k]))
-							- ((currUser.authorities[k] * sigma) / currUser.topicalInterests[k])
-							- (sigma * Math.log(currUser.topicalInterests[k]));
-					if (Double.isInfinite(linkAuthorityLikelihood) || Double.isNaN(linkAuthorityLikelihood)) {
-						System.out.printf("[authority] A[%d] = %.12f\n", k, currUser.authorities[k]);
-						System.exit(0);
-					}
-					// hub prior
-					linkHubLikelihood += ((delta - 1) * Math.log(currUser.hubs[k]))
-							- ((currUser.hubs[k] * delta) / currUser.topicalInterests[k])
-							- (delta * Math.log(currUser.topicalInterests[k]));
-					if (Double.isInfinite(linkHubLikelihood) || Double.isNaN(linkHubLikelihood)) {
-						System.out.printf("[hub] H[%d] = %.12f\n", k, currUser.hubs[k]);
-						System.exit(0);
-					}
-					// platform preference prior
-					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-						if (currUser.platforms[p] == 0) {
-							continue;
-						}
-						linkPlatformLikelihood += (alpha - 1) * Math.log(currUser.topicalPlatformPreference[k][p])
-								- (currUser.topicalPlatformPreference[k][p] / theta);
-						if (Double.isInfinite(linkPlatformLikelihood) || Double.isNaN(linkPlatformLikelihood)) {
-							System.out.printf("[platform] P[%d] = %.12f\n", k,
-									currUser.topicalPlatformPreference[k][p]);
-							System.exit(0);
-						}
-					}
+
+			for (int k = 0; k < nTopics; k++) {
+				// authority likelihood given x
+				authorityLikelihood += ((sigma - 1) * Math.log(currUser.authorities[k]))
+						- ((currUser.authorities[k] * sigma) / currUser.topicalInterests[k])
+						- (sigma * Math.log(currUser.topicalInterests[k]));
+				if (Double.isInfinite(authorityLikelihood) || Double.isNaN(authorityLikelihood)) {
+					System.out.printf("[authority] A[%d] = %.12f\n", k, currUser.authorities[k]);
+					System.exit(0);
+				}
+				// hub likelihood given x
+				hubLikelihood += ((delta - 1) * Math.log(currUser.hubs[k]))
+						- ((currUser.hubs[k] * delta) / currUser.topicalInterests[k])
+						- (delta * Math.log(currUser.topicalInterests[k]));
+				if (Double.isInfinite(hubLikelihood) || Double.isNaN(hubLikelihood)) {
+					System.out.printf("[hub] H[%d] = %.12f\n", k, currUser.hubs[k]);
+					System.exit(0);
 				}
 			}
 
@@ -566,27 +553,40 @@ public class MultiThreadMPHAT {
 				}
 			}
 
-			if (usePrior) {// users' topical interest prior
+			if (usePrior) {
 				for (int k = 0; k < nTopics; k++) {
-					postXLikelihood += ((kappa - 1) * Math.log(currUser.topicalInterests[k]))
+					// users' topical interest prior
+					latentFactorPrior += ((kappa - 1) * Math.log(currUser.topicalInterests[k]))
 							- (currUser.topicalInterests[k] / theta);
+					// platform preference prior
+					for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+						if (currUser.platforms[p] == 0) {
+							continue;
+						}
+						platformPreferencePrior += (alpha - 1) * Math.log(currUser.topicalPlatformPreference[k][p])
+								- (currUser.topicalPlatformPreference[k][p] / theta);
+						if (Double.isInfinite(platformPreferencePrior) || Double.isNaN(platformPreferencePrior)) {
+							System.out.printf("[platform] P[%d] = %.12f\n", k,
+									currUser.topicalPlatformPreference[k][p]);
+							System.exit(0);
+						}
+					}
 				}
 			}
 		}
 
-		if (usePrior) {// latent factors' prior
+		if (usePrior) {// topics' prior
 			for (int k = 0; k < nTopics; k++) {
 				for (int w = 0; w < dataset.vocabulary.length; w++) {
-					postTauLikelihood += (gamma - 1) * Math.log(topicWordDist[k][w]);
+					topicPrior += (gamma - 1) * Math.log(topicWordDist[k][w]);
 				}
 			}
 		}
 
-		linkLikelihood += linkRelationshipLikelihood + linkAuthorityLikelihood + linkHubLikelihood
-				+ linkPlatformLikelihood;
+		linkLikelihood += relationshipLikelihood + authorityLikelihood + hubLikelihood + platformPreferencePrior;
 
-		postLikelihood = postWordLikelihood + postPlatformLikelihood + postTopicLikelihood + postXLikelihood
-				+ postTauLikelihood;
+		postLikelihood = postWordLikelihood + postPlatformLikelihood + postTopicLikelihood + latentFactorPrior
+				+ topicPrior;
 
 		if (Double.isInfinite(linkLikelihood) || Double.isInfinite(postLikelihood) || Double.isNaN(linkLikelihood)
 				|| Double.isNaN(postLikelihood)) {
@@ -624,14 +624,14 @@ public class MultiThreadMPHAT {
 	public static double getLikelihood(int u) {
 		double linkLikelihood = 0;
 		double linkRelationshipLikelihood = 0;
-		double linkAuthorityLikelihood = 0;
-		double linkHubLikelihood = 0;
-		double linkPlatformLikelihood = 0;
+		double authorityLikelihood = 0;
+		double hubLikelihood = 0;
+		double platformPreferencePrior = 0;
 		double postLikelihood = 0;
 		double postWordLikelihood = 0;
 		double postTopicLikelihood = 0;
 		double postPlatformLikelihood = 0;
-		double postXLikelihood = 0;
+		double latentFactorPrior = 0;
 
 		double temp;
 		double log2 = Math.log(2);
@@ -722,36 +722,23 @@ public class MultiThreadMPHAT {
 				linkRelationshipLikelihood += log2 - HupAvp - Math.log(Math.exp(-HupAvp) + 1);
 			}
 		}
-		if (usePrior) {
-			for (int k = 0; k < nTopics; k++) {
-				// authority prior
-				linkAuthorityLikelihood += ((sigma - 1) * Math.log(currUser.authorities[k]))
-						- ((currUser.authorities[k] * sigma) / currUser.topicalInterests[k])
-						- (sigma * Math.log(currUser.topicalInterests[k]));
-				if (Double.isInfinite(linkAuthorityLikelihood) || Double.isNaN(linkAuthorityLikelihood)) {
-					System.out.printf("[authority] A[%d] = %.12f\n", k, currUser.authorities[k]);
-					System.exit(0);
-				}
-				// hub prior
-				linkHubLikelihood += ((delta - 1) * Math.log(currUser.hubs[k]))
-						- ((currUser.hubs[k] * delta) / currUser.topicalInterests[k])
-						- (delta * Math.log(currUser.topicalInterests[k]));
-				if (Double.isInfinite(linkHubLikelihood) || Double.isNaN(linkHubLikelihood)) {
-					System.out.printf("[hub] H[%d] = %.12f\n", k, currUser.hubs[k]);
-					System.exit(0);
-				}
-				// platform prior
-				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-					if (currUser.platforms[p] == 0) {
-						continue;
-					}
-					linkPlatformLikelihood += (alpha - 1) * Math.log(currUser.topicalPlatformPreference[k][p])
-							- (currUser.topicalPlatformPreference[k][p] / theta);
-					if (Double.isInfinite(linkPlatformLikelihood) || Double.isNaN(linkPlatformLikelihood)) {
-						System.out.printf("[platform] P[%d] = %.12f\n", k, currUser.topicalPlatformPreference[k][p]);
-						System.exit(0);
-					}
-				}
+
+		for (int k = 0; k < nTopics; k++) {
+			// authority prior
+			authorityLikelihood += ((sigma - 1) * Math.log(currUser.authorities[k]))
+					- ((currUser.authorities[k] * sigma) / currUser.topicalInterests[k])
+					- (sigma * Math.log(currUser.topicalInterests[k]));
+			if (Double.isInfinite(authorityLikelihood) || Double.isNaN(authorityLikelihood)) {
+				System.out.printf("[authority] A[%d] = %.12f\n", k, currUser.authorities[k]);
+				System.exit(0);
+			}
+			// hub prior
+			hubLikelihood += ((delta - 1) * Math.log(currUser.hubs[k]))
+					- ((currUser.hubs[k] * delta) / currUser.topicalInterests[k])
+					- (delta * Math.log(currUser.topicalInterests[k]));
+			if (Double.isInfinite(hubLikelihood) || Double.isNaN(hubLikelihood)) {
+				System.out.printf("[hub] H[%d] = %.12f\n", k, currUser.hubs[k]);
+				System.exit(0);
 			}
 		}
 
@@ -820,17 +807,29 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		if (usePrior) {// users' topical interest prior
+		if (usePrior) {
 			for (int k = 0; k < nTopics; k++) {
-				postXLikelihood += ((kappa - 1) * Math.log(currUser.topicalInterests[k]))
+				// latent factor prior
+				latentFactorPrior += ((kappa - 1) * Math.log(currUser.topicalInterests[k]))
 						- (currUser.topicalInterests[k] / theta);
+				// platform prior
+				for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
+					if (currUser.platforms[p] == 0) {
+						continue;
+					}
+					platformPreferencePrior += (alpha - 1) * Math.log(currUser.topicalPlatformPreference[k][p])
+							- (currUser.topicalPlatformPreference[k][p] / theta);
+					if (Double.isInfinite(platformPreferencePrior) || Double.isNaN(platformPreferencePrior)) {
+						System.out.printf("[platform] P[%d] = %.12f\n", k, currUser.topicalPlatformPreference[k][p]);
+						System.exit(0);
+					}
+				}
 			}
 		}
 
-		linkLikelihood += linkRelationshipLikelihood + linkAuthorityLikelihood + linkHubLikelihood
-				+ linkPlatformLikelihood;
+		linkLikelihood += linkRelationshipLikelihood + authorityLikelihood + hubLikelihood + platformPreferencePrior;
 
-		postLikelihood = postWordLikelihood + postPlatformLikelihood + postTopicLikelihood + postXLikelihood;
+		postLikelihood = postWordLikelihood + postPlatformLikelihood + postTopicLikelihood + latentFactorPrior;
 
 		if (Double.isInfinite(linkLikelihood) || Double.isInfinite(postLikelihood) || Double.isNaN(linkLikelihood)
 				|| Double.isNaN(postLikelihood)) {
@@ -855,7 +854,7 @@ public class MultiThreadMPHAT {
 		double authorityLikelihood = 0;
 		double hubLikelihood = 0;
 		double postLikelihood = 0;
-		double topicLikelihood = 0;
+		double prior = 0;
 		double finalLikelihood = 0;
 		double denominator = 0;
 
@@ -878,7 +877,7 @@ public class MultiThreadMPHAT {
 				// Fourth term in eqn 16
 				// topicLikelihood += ((kappa - 1) * Math.log(x[k])) - (x[k] /
 				// theta);
-				topicLikelihood += ((kappa - 1) * temp) - (x[k] / theta);
+				prior += ((kappa - 1) * temp) - (x[k] / theta);
 			}
 
 			// denominator of third term in eqn 16
@@ -899,7 +898,7 @@ public class MultiThreadMPHAT {
 				postLikelihood += x[postTopic] - logDenominator;
 			}
 		}
-		finalLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + topicLikelihood;
+		finalLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + prior;
 
 		return finalLikelihood;
 	}
@@ -919,7 +918,7 @@ public class MultiThreadMPHAT {
 		double authorityLikelihood = 0;
 		double hubLikelihood = 0;
 		double postLikelihood = 0;
-		double topicLikelihood = 0;
+		double prior = 0;
 		double gradLikelihood = 0;
 
 		// Set the current user to be u
@@ -963,10 +962,10 @@ public class MultiThreadMPHAT {
 
 		// Fourth term in eqn 18
 		if (usePrior) {
-			topicLikelihood = ((kappa - 1) / x) - (1 / theta);
+			prior = ((kappa - 1) / x) - (1 / theta);
 		}
 
-		gradLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + topicLikelihood;
+		gradLikelihood = authorityLikelihood + hubLikelihood + postLikelihood + prior;
 
 		return gradLikelihood;
 
@@ -1054,7 +1053,7 @@ public class MultiThreadMPHAT {
 		// Refer to Eqn 24 in Learning paper
 		double followerLikelihood = 0;
 		double nonFollowerLikelihood = 0;
-		double postLikelihood = 0;
+		double authorityLikelihood = 0;
 		double likelihood = 0;
 
 		// Set the current user to be v
@@ -1115,16 +1114,16 @@ public class MultiThreadMPHAT {
 
 			}
 		}
-		if (usePrior) {
-			// Third term in eqn 24. Compute post likelihood.
-			for (int k = 0; k < nTopics; k++) {
-				postLikelihood += ((sigma - 1) * Math.log(x[k])) - ((x[k] * sigma) / currUser.topicalInterests[k]);// now
-				// A_v
-				// is
-				// x
-			}
+
+		// Third term in eqn 24. Compute post likelihood.
+		for (int k = 0; k < nTopics; k++) {
+			authorityLikelihood += ((sigma - 1) * Math.log(x[k])) - ((x[k] * sigma) / currUser.topicalInterests[k]);// now
+			// A_v
+			// is
+			// x
 		}
-		likelihood = nonFollowerLikelihood + followerLikelihood + (phi * postLikelihood);
+
+		likelihood = nonFollowerLikelihood + followerLikelihood + (phi * authorityLikelihood);
 
 		return likelihood;
 	}
@@ -1143,7 +1142,7 @@ public class MultiThreadMPHAT {
 		// Refer to Eqn 26 in Learning paper
 		double followerLikelihood = 0;
 		double nonFollowerLikelihood = 0;
-		double postLikelihood = 0;
+		double authorityLikelihood = 0;
 		double gradLikelihood = 0;
 
 		// Set the current user to be v
@@ -1220,11 +1219,11 @@ public class MultiThreadMPHAT {
 										* currUser.topicalRelativePlatformPreference[k][p]));
 			}
 		}
-		if (usePrior) {
-			// Third term in eqn 26. Compute post likelihood
-			postLikelihood = ((sigma - 1) / x) - (sigma / currUser.topicalInterests[k]);
-		}
-		gradLikelihood = nonFollowerLikelihood + followerLikelihood + (phi * postLikelihood);
+
+		// Third term in eqn 26. Compute post likelihood
+		authorityLikelihood = ((sigma - 1) / x) - (sigma / currUser.topicalInterests[k]);
+
+		gradLikelihood = nonFollowerLikelihood + followerLikelihood + (phi * authorityLikelihood);
 
 		return gradLikelihood;
 	}
@@ -1312,7 +1311,7 @@ public class MultiThreadMPHAT {
 		// Refer to Eqn 20 in learning paper
 		double followingLikelihood = 0;
 		double nonFollowingLikelihood = 0;
-		double postLikelihood = 0;
+		double hubLikelihood = 0;
 		double likelihood = 0;
 
 		// Set the current user to be v
@@ -1375,17 +1374,15 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		if (usePrior) {
-			// Third term in eqn 20. Compute post likelihood.
-			for (int k = 0; k < nTopics; k++) {
-				postLikelihood += ((delta - 1) * Math.log(x[k])) - ((x[k] * delta) / currUser.topicalInterests[k]);// now
-				// H_u
-				// is
-				// x
-			}
+		// Third term in eqn 20. Compute post likelihood.
+		for (int k = 0; k < nTopics; k++) {
+			hubLikelihood += ((delta - 1) * Math.log(x[k])) - ((x[k] * delta) / currUser.topicalInterests[k]);// now
+			// H_u
+			// is
+			// x
 		}
 
-		likelihood = nonFollowingLikelihood + followingLikelihood + (omega * postLikelihood);
+		likelihood = nonFollowingLikelihood + followingLikelihood + (omega * hubLikelihood);
 		// likelihood = followingLikelihood;
 
 		return likelihood;
@@ -1405,7 +1402,7 @@ public class MultiThreadMPHAT {
 		// Refer to Eqn 22 in learning paper
 		double followingLikelihood = 0;
 		double nonFollowingLikelihood = 0;
-		double postLikelihood = 0;
+		double hubLikelihood = 0;
 		double gradLikelihood = 0;
 
 		// Set the current user to be u
@@ -1489,12 +1486,10 @@ public class MultiThreadMPHAT {
 			}
 		}
 
-		if (usePrior) {
-			// Third term in eqn 22. Compute post likelihood
-			postLikelihood = ((delta - 1) / x) - (delta / currUser.topicalInterests[k]);
-		}
+		// Third term in eqn 22. Compute post likelihood
+		hubLikelihood = ((delta - 1) / x) - (delta / currUser.topicalInterests[k]);
 
-		gradLikelihood = nonFollowingLikelihood + followingLikelihood + (omega * postLikelihood);
+		gradLikelihood = nonFollowingLikelihood + followingLikelihood + (omega * hubLikelihood);
 		// gradLikelihood = followingLikelihood;
 
 		return gradLikelihood;
@@ -1582,7 +1577,7 @@ public class MultiThreadMPHAT {
 		double linkLikelihood = 0;
 		double nonLinkLikelihood = 0;
 		double postLikelihood = 0;
-		double platformLikelihood = 0;
+		double platformPreferencePrior = 0;
 		double likelihood = 0;
 
 		// Set the current user to be v
@@ -1715,10 +1710,10 @@ public class MultiThreadMPHAT {
 		if (usePrior) {
 			// Fourth term in eqn 28. Compute platform likelihood.
 			for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
-				platformLikelihood += ((alpha - 1) * Math.log(x[p])) - (x[p] / theta);
+				platformPreferencePrior += ((alpha - 1) * Math.log(x[p])) - (x[p] / theta);
 			}
 		}
-		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformPreferencePrior;
 		// likelihood = postLikelihood + platformLikelihood;
 		// likelihood = linkLikelihood + nonLinkLikelihood;
 
@@ -1741,7 +1736,7 @@ public class MultiThreadMPHAT {
 		double linkLikelihood = 0;
 		double nonLinkLikelihood = 0;
 		double postLikelihood = 0;
-		double platformLikelihood = 0;
+		double platformPreferencePrior = 0;
 		double likelihood = 0;
 
 		// Set the current user to be
@@ -1943,10 +1938,10 @@ public class MultiThreadMPHAT {
 		}
 		if (usePrior) {
 			// Fourth term in eqn 28. Compute platform likelihood.
-			platformLikelihood += ((alpha - 1) / x) - (1 / theta);
+			platformPreferencePrior += ((alpha - 1) / x) - (1 / theta);
 		}
 
-		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformLikelihood;
+		likelihood = linkLikelihood + nonLinkLikelihood + postLikelihood + platformPreferencePrior;
 		// likelihood = postLikelihood + platformLikelihood;
 		// likelihood = linkLikelihood + nonLinkLikelihood;
 
@@ -2758,28 +2753,27 @@ public class MultiThreadMPHAT {
 			// platform preference
 			if (learnUserPlatformPreference) {
 				System.out.printf("[iter-%d] optimizing users' platform preference\n", iter);
-				executor = Executors.newFixedThreadPool(nParallelThreads);
-				for (int i = 0; i < nParallelThreads; i++) {
-					Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i],
-							"optPlatformPreferences");
-					executor.execute(worker);
-				}
-				executor.shutdown();
-				while (!executor.isTerminated()) {
-					// do nothing, just wait for the threads to finish
+				if (asynchronousParallelUserPlatformPreference) {
+					// TODO: check for convergence
+					executor = Executors.newFixedThreadPool(nParallelThreads);
+					for (int i = 0; i < nParallelThreads; i++) {
+						Runnable worker = new ChildThread(threadStartIndexes[i], threadEndIndexes[i],
+								"optPlatformPreferences");
+						executor.execute(worker);
+					}
+					executor.shutdown();
+					while (!executor.isTerminated()) {
+						// do nothing, just wait for the threads to finish
+					}
+				} else {
+					for (int u = 0; u < dataset.nUsers; u++) {
+						for (int k = 0; k < nTopics; k++) {
+							altOptimize_PlatformPreference(u, k);
+						}
+					}
 				}
 				System.out.printf("[iter-%d] after learning platform preference likelihood = %f\n", iter,
 						getLikelihood_parallel());
-
-				// TODO: parallelizable???
-				// for (int u = 0; u < dataset.nUsers; u++) {
-				// for (int k = 0; k < nTopics; k++) {
-				// altOptimize_PlatformPreference(u, k);
-				// }
-				// }
-				// System.out.printf("[iter-%d] after learning platform
-				// preference likelihood = %f\n", iter,
-				// getLikelihood_parallel());
 			}
 
 			// Gibbs part that employ topic sampling
