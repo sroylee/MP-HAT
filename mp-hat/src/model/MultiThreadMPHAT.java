@@ -2049,14 +2049,10 @@ public class MultiThreadMPHAT {
 		// p: p(z_u,s = z| rest)
 
 		double[] p = new double[nTopics];
-		double max = -Double.MAX_VALUE;
-
-		// Softmax to covert the user topical interests to between 0-1
-		double[] currUserTopicalInterests = tool.MathTool.softmax(currUser.topicalInterests);
-
+		double max = -Double.MAX_VALUE;		
 		for (int z = 0; z < nTopics; z++) {
 			// User-topic
-			p[z] = Math.log(currUserTopicalInterests[z]);
+			p[z] = currUser.topicalInterests[z];
 
 			// topic-word
 			Post currPost = currUser.posts[n];
@@ -2066,8 +2062,7 @@ public class MultiThreadMPHAT {
 			}
 
 			// preference
-			double[] currentUserPlatformPreference = tool.MathTool.softmax(currUser.topicalPlatformPreference[z]);
-			p[z] += Math.log(currentUserPlatformPreference[currPost.platform]);
+			p[z] += Math.log(currUser.topicalRelativePlatformPreference[z][currPost.platform]);
 
 			// update min
 			if (max < p[z]) {
