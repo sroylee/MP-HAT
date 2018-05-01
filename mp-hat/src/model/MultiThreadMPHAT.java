@@ -27,7 +27,7 @@ public class MultiThreadMPHAT {
 	private static boolean userGlobalMin = true;
 	private static boolean initByGroundTruth = false;
 	private static boolean initByTopicModeling = true;
-	private static boolean InitPlatformPreferenceByTopicModeling = false;
+	private static boolean InitPlatformPreferenceByTopicModeling = true;
 	private static boolean onlyLearnGibbs = false;
 	private static boolean learnTopic = false;
 	private static boolean learnUserInterest = true;
@@ -50,8 +50,8 @@ public class MultiThreadMPHAT {
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
 	public static double lamda = 1;
-	public static double omega = 1.5; // regularization for authority 
-	public static double phi = 1.5; // regularization for hub
+	public static double omega = 1.45; // regularization for authority 
+	public static double phi = 1.45; // regularization for hub
 	
 
 	public static Random rand;
@@ -3046,7 +3046,8 @@ public class MultiThreadMPHAT {
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
-		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
+		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
+		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
 		int nTopics = 12;

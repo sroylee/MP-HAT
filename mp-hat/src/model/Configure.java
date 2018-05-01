@@ -16,6 +16,7 @@ public class Configure {
 							// neighborhood
 		HITS,
 		MPHAT, //our new model
+		MPHAT_TI,
 	}
 
 	public final static int NUM_OF_PLATFORM = 1;
