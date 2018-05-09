@@ -27,7 +27,7 @@ public class MultiThreadMPHAT {
 	private static boolean userGlobalMin = true;
 	private static boolean initByGroundTruth = false;
 	private static boolean initByTopicModeling = true;
-	private static boolean InitPlatformPreferenceByTopicModeling = true;
+	private static boolean InitPlatformPreferenceByTopicModeling = false;
 	private static boolean onlyLearnGibbs = false;
 	private static boolean learnTopic = false;
 	private static boolean learnUserInterest = true;
@@ -52,7 +52,7 @@ public class MultiThreadMPHAT {
 	public static double delta;// variance of users' hubs
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
-	public static double lamda = 1;
+	public static double lamda = 0.1;
 	public static double omega = 1.4; // regularization for authority 
 	public static double phi = 1.4; // regularization for hub
 
@@ -1074,7 +1074,7 @@ public class MultiThreadMPHAT {
 							* currUser.topicalRelativePlatformPreference[z][p];// now
 					// A_v
 					// is
-					// x
+					// x4
 				}
 				HupAvp = HupAvp * lamda;
 				// double fHupAvp = 2 * ((1 / (Math.exp(-HupAvp) + 1)) - 0.5);
@@ -1087,7 +1087,6 @@ public class MultiThreadMPHAT {
 				followerLikelihood += Math.log(1 - temp) - Math.log(temp + 1);
 			}
 		}
-
 		// Second term in eqn 24. Compute non follower likelihood.
 		if (currUser.nonFollowers != null) {
 			for (int i = 0; i < currUser.nonFollowers.length; i++) {
@@ -3058,8 +3057,10 @@ public class MultiThreadMPHAT {
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
+		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
 		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
+		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/twitter";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
 		int nTopics = 12;

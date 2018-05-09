@@ -63,8 +63,8 @@ public class Prediction {
 	 * 
 	 * @param dataPath
 	 */
-	public Prediction(String _path, String _resultPath, int _nTopics,
-			int _nPlatforms, int _testBatch, PredictionMode _predMode, String _outputPath) {
+	public Prediction(String _path, String _resultPath, int _nTopics, int _nPlatforms, int _testBatch,
+			PredictionMode _predMode, String _outputPath) {
 		this.dataPath = _path;
 		this.resultPath = _resultPath;
 		this.nTopics = _nTopics;
@@ -72,17 +72,17 @@ public class Prediction {
 		this.testBatch = _testBatch;
 		this.predMode = _predMode;
 		this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		if (predMode == PredictionMode.HAT) {
-//			this.outputPath = String.format("%s/%d",_outputPath, nTopics);
-//		} else if (predMode == PredictionMode.WTFW) {
-//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		} else if (predMode == PredictionMode.CTR) {
-//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		} else if (predMode == PredictionMode.COMMON_INTEREST) {
-//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		} else {
-//			this.outputPath = _outputPath;
-//		}
+		// if (predMode == PredictionMode.HAT) {
+		// this.outputPath = String.format("%s/%d",_outputPath, nTopics);
+		// } else if (predMode == PredictionMode.WTFW) {
+		// this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+		// } else if (predMode == PredictionMode.CTR) {
+		// this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+		// } else if (predMode == PredictionMode.COMMON_INTEREST) {
+		// this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+		// } else {
+		// this.outputPath = _outputPath;
+		// }
 
 		File theDir = new File(outputPath);
 
@@ -130,7 +130,7 @@ public class Prediction {
 			System.out.println("compute prediction scores");
 			computeMPHATScores();
 
-		}else if (predMode == PredictionMode.MPHAT_TI) {
+		} else if (predMode == PredictionMode.MPHAT_TI) {
 			loadTestData(relationshipFile, userFile);
 
 			String authFilePath = String.format("%s/l_userAuthorityDistributions.csv", resultPath);
@@ -141,8 +141,7 @@ public class Prediction {
 			int hubSize = loadUserHubs(hubFilePath, nTopics);
 			System.out.println("loaded hubs of " + hubSize + " users");
 
-			String preferenceFilePath = String.format("%s/l_userPlatformPreferenceDistributions.csv",
-					resultPath);
+			String preferenceFilePath = String.format("%s/l_userPlatformPreferenceDistributions.csv", resultPath);
 			int preferenceSize = loadUserTopicIndependentPlatformPreferences(preferenceFilePath, nTopics, nPlatforms);
 			System.out.println("loaded platform of " + preferenceSize + " users");
 
@@ -171,8 +170,7 @@ public class Prediction {
 		else if (predMode == PredictionMode.COMMON_INTEREST) {
 			loadTestData(relationshipFile, userFile);
 
-			String interestFilePath = String.format("%s/l_GibbUserTopicalInterestDistributions.csv",
-					resultPath);
+			String interestFilePath = String.format("%s/l_GibbUserTopicalInterestDistributions.csv", resultPath);
 			int interestSize = loadUserInterests(interestFilePath, nTopics);
 			System.out.println("loaded interests of " + interestSize + " users");
 
@@ -335,7 +333,7 @@ public class Prediction {
 		for (int i = 0; i < users.length; i++) {
 			preferences = new double[nPlatforms];
 			for (int p = 0; p < nPlatforms; p++) {
-					preferences[p] = Double.NEGATIVE_INFINITY;
+				preferences[p] = Double.NEGATIVE_INFINITY;
 			}
 			userTopicIndependentPlatformPreferences.put(users[i], preferences);
 		}
@@ -728,7 +726,7 @@ public class Prediction {
 			predictionScores[i] = HupAvp;
 		}
 	}
-	
+
 	private void computeMPHATTIScores() {
 		String uid = "";
 		String vid = "";
@@ -925,21 +923,37 @@ public class Prediction {
 					String[] uPlatform = userPlatforms.get(uid).split(" ");
 					if (uPlatform[p].equals("1")) {
 						int posCount = 0;
-						if (userTestPositiveLinkCount.containsKey(uid)
-								&& userTestPositiveLinkCount.get(uid)[p] >= currK) {
-							if (userTestNegativeLinkCount.containsKey(uid)
-									&& userTestNegativeLinkCount.get(uid)[p] >= currK) {
-								checkPosCount += userTestPositiveLinkCount.get(uid)[p];
-								count++;
-								ArrayList<Integer> labels = UserLinkLabels.get(uid).get(p);
-								for (int j = 0; j < currK; j++) {
-									if (labels.get(j) == 1) {
-										posCount++;
-									}
+						// if (userTestPositiveLinkCount.containsKey(uid)
+						// && userTestPositiveLinkCount.get(uid)[p] >= currK) {
+						// if (userTestNegativeLinkCount.containsKey(uid)
+						// && userTestNegativeLinkCount.get(uid)[p] >= currK) {
+						// checkPosCount +=
+						// userTestPositiveLinkCount.get(uid)[p];
+						// count++;
+						// ArrayList<Integer> labels =
+						// UserLinkLabels.get(uid).get(p);
+						// for (int j = 0; j < currK; j++) {
+						// if (labels.get(j) == 1) {
+						// posCount++;
+						// }
+						// }
+						// sumPrecision += (float) posCount / (float) currK;
+						// sumRecall += (float) posCount / (float)
+						// userTestPositiveLinkCount.get(uid)[p];
+						// }
+						// }
+						if (userTestPositiveLinkCount.containsKey(uid) && userTestNegativeLinkCount.containsKey(uid)) {
+
+							checkPosCount += userTestPositiveLinkCount.get(uid)[p];
+							count++;
+							ArrayList<Integer> labels = UserLinkLabels.get(uid).get(p);
+							for (int j = 0; j < currK; j++) {
+								if (labels.get(j) == 1) {
+									posCount++;
 								}
-								sumPrecision += (float) posCount / (float) currK;
-								sumRecall += (float) posCount / (float) userTestPositiveLinkCount.get(uid)[p];
 							}
+							sumPrecision += (float) posCount / (float) currK;
+							sumRecall += (float) posCount / (float) userTestPositiveLinkCount.get(uid)[p];
 						}
 					}
 
