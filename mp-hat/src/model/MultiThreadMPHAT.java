@@ -23,6 +23,7 @@ public class MultiThreadMPHAT {
 	public static Dataset dataset;
 	public static int nTopics;
 	public static int batch;
+	public static String outputPath;
 
 	private static boolean userGlobalMin = true;
 	private static boolean initByGroundTruth = false;
@@ -53,8 +54,13 @@ public class MultiThreadMPHAT {
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
 	public static double lamda = 0.1;
+<<<<<<< HEAD
 	public static double omega = 1.4; // regularization for authority 
 	public static double phi = 1.4; // regularization for hub
+=======
+	public static double omega = 100; // regularization for authority
+	public static double phi = 100; // regularization for hub
+>>>>>>> d500dd765e4297f79ba9c6ddef429f94b19596db
 
 	public static Random rand;
 
@@ -345,11 +351,13 @@ public class MultiThreadMPHAT {
 	 * @param _datasetPath
 	 * @param _nTopics
 	 */
-	public MultiThreadMPHAT(String _datasetPath, int _nTopics, int _batch) {
+	public MultiThreadMPHAT(String _datasetPath, int _nTopics, int _batch, String _outputPath) {
 		datapath = _datasetPath;
 		dataset = new Dataset(_datasetPath, _batch, false);
 		nTopics = _nTopics;
 		batch = _batch;
+		outputPath = _outputPath;
+
 		n_zu = new int[nTopics][dataset.nUsers];
 		sum_nzu = new int[dataset.nUsers];
 		n_zw = new int[nTopics][dataset.vocabulary.length];
@@ -2829,7 +2837,7 @@ public class MultiThreadMPHAT {
 
 	public void output_topicWord() {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_topicalWordDistributions.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_topicalWordDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int k = 0; k < nTopics; k++) {
 				String text = Integer.toString(k);
@@ -2848,7 +2856,7 @@ public class MultiThreadMPHAT {
 
 	private void outputPostTopicTopWords(int k) {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_topTopicWords.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_topTopicWords.csv");
 			BufferedWriter bw = new BufferedWriter(new FileWriter(f.getAbsoluteFile()));
 			RankingTool rankTool = new RankingTool();
 			WeightedElement[] topWords = null;
@@ -2869,7 +2877,7 @@ public class MultiThreadMPHAT {
 	public void output_topicInterest() {
 		try {
 			File f = new File(
-					dataset.path + "/" + nTopics + "/omega_" + omega + "/l_userTopicalInterestDistributions.csv");
+					outputPath + "/" + nTopics + "/omega_" + omega + "/l_userTopicalInterestDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -2889,7 +2897,7 @@ public class MultiThreadMPHAT {
 
 	public void output_platformPreference() {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega
 					+ "/l_userTopicalPlatformPreferenceDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
@@ -2912,7 +2920,7 @@ public class MultiThreadMPHAT {
 
 	public void output_authority() {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_userAuthorityDistributions.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_userAuthorityDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -2932,7 +2940,7 @@ public class MultiThreadMPHAT {
 
 	public void output_hub() {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_userHubDistributions.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_userHubDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -3026,7 +3034,7 @@ public class MultiThreadMPHAT {
 
 	public void output_OptLikelihoodPerplexity() {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_OptLikelihoodPerplexity.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_OptLikelihoodPerplexity.csv");
 			FileWriter fo = new FileWriter(f);
 			fo.write("PostLogLikelihood:" + postOptLogLikelidhood + "\n");
 			fo.write("PostLogPerplexity:" + postOptLogPerplexity + "\n");
@@ -3040,7 +3048,7 @@ public class MultiThreadMPHAT {
 
 	public void output_LastLikelihoodPerplexity() {
 		try {
-			File f = new File(dataset.path + "/" + nTopics + "/omega_" + omega + "/l_LastLikelihoodPerplexity.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_LastLikelihoodPerplexity.csv");
 			FileWriter fo = new FileWriter(f);
 			fo.write("PostLogLikelihood:" + postLastLogLikelidhood + "\n");
 			fo.write("PostLogPerplexity:" + postLastLogPerplexity + "\n");
@@ -3053,19 +3061,29 @@ public class MultiThreadMPHAT {
 	}
 
 	public static void main(String[] args) {
-		//String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
+		// String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
+<<<<<<< HEAD
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
 		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/twitter";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
+=======
+		// String datasetPath =
+		// "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
+		// String datasetPath =
+		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
+		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
+		// String datasetPath =
+		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
+>>>>>>> d500dd765e4297f79ba9c6ddef429f94b19596db
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
 		int nTopics = 12;
 		int batch = 1;
-		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch);
+		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch, null);
 
 		// model.getThreadIndexes();
 		// model.init();
