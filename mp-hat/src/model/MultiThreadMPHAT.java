@@ -54,13 +54,8 @@ public class MultiThreadMPHAT {
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
 	public static double lamda = 0.1;
-<<<<<<< HEAD
-	public static double omega = 1.4; // regularization for authority 
-	public static double phi = 1.4; // regularization for hub
-=======
 	public static double omega = 100; // regularization for authority
 	public static double phi = 100; // regularization for hub
->>>>>>> d500dd765e4297f79ba9c6ddef429f94b19596db
 
 	public static Random rand;
 
@@ -3064,14 +3059,12 @@ public class MultiThreadMPHAT {
 		// String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
-<<<<<<< HEAD
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
-		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
+		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/twitter";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
-=======
 		// String datasetPath =
 		// "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
 		// String datasetPath =
@@ -3079,7 +3072,6 @@ public class MultiThreadMPHAT {
 		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
 		// String datasetPath =
 		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
->>>>>>> d500dd765e4297f79ba9c6ddef429f94b19596db
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
 		int nTopics = 12;
 		int batch = 1;

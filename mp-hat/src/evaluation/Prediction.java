@@ -57,6 +57,8 @@ public class Prediction {
 	private int[] testLabels;
 	private int[] testPlatforms;
 	private double[] predictionScores;
+	private HashMap<String, double[]> user_precision_at_k;
+	
 
 	/***
 	 * read dataset from folder "path"
@@ -910,6 +912,18 @@ public class Prediction {
 			int platform = testPlatforms[index];
 			UserLinkLabels.get(uid).get(platform).add(testLabels[index]);
 		}
+		
+		//init user-level_prec
+		double[] prec;
+		user_precision_at_k = new HashMap<String, double[]>();
+		for (int u = 0; u < users.length; u++) {
+			String uid = users[u];
+			prec = new double[k];
+			for (int i = 0; i < k; i++){
+				prec[i] = 0;
+			}
+			user_precision_at_k.put(uid, prec);
+		}
 
 		for (int p = 0; p < nPlatforms; p++) {
 			for (int i = 0; i < k; i++) {
@@ -921,6 +935,7 @@ public class Prediction {
 				for (int u = 0; u < users.length; u++) {
 					String uid = users[u];
 					String[] uPlatform = userPlatforms.get(uid).split(" ");
+					
 					if (uPlatform[p].equals("1")) {
 						int posCount = 0;
 						// if (userTestPositiveLinkCount.containsKey(uid)
@@ -952,11 +967,15 @@ public class Prediction {
 									posCount++;
 								}
 							}
+							double[] currPrec = user_precision_at_k.get(uid);
+							currPrec[i] = (float) posCount / (float) currK;
+							user_precision_at_k.put(uid, currPrec);
+							
 							sumPrecision += (float) posCount / (float) currK;
 							sumRecall += (float) posCount / (float) userTestPositiveLinkCount.get(uid)[p];
 						}
 					}
-
+					
 				}
 				System.out.println("#PositiveLinks@" + k + ": " + checkPosCount);
 				precision[i] = sumPrecision / count;
@@ -1008,6 +1027,24 @@ public class Prediction {
 				}
 				fo.write("MRR," + mrr + "," + mrr + "\n");
 				fo.close();
+			} catch (Exception e) {
+				System.out.println("Error in writing out post topic top words to file!");
+				e.printStackTrace();
+				System.exit(0);
+			}
+			
+			try {
+				File f = new File(outputPath + "/" + p + "_" + predMode + "_User_Precisions.csv");
+				FileWriter fo = new FileWriter(f, false);
+				for (int u = 0; u < users.length; u++) {
+					String uid = users[u];
+					fo.write(uid);
+					double[] precs = user_precision_at_k.get(uid);
+					for (int i = 0; i < k; i++) {
+						fo.write("," + precs[i]);
+					}
+					fo.write("\n");
+				}
 				fo.close();
 			} catch (Exception e) {
 				System.out.println("Error in writing out post topic top words to file!");
