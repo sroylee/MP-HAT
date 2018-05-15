@@ -53,9 +53,9 @@ public class MultiThreadMPHAT {
 	public static double delta;// variance of users' hubs
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
-	public static double lamda = 0.1;
-	public static double omega = 100; // regularization for authority
-	public static double phi = 100; // regularization for hub
+	public static double lamda = 0.01;
+	public static double omega = 10; // regularization for hub
+	public static double phi = 10; // regularization for authority
 
 	public static Random rand;
 
@@ -2832,7 +2832,7 @@ public class MultiThreadMPHAT {
 
 	public void output_topicWord() {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_topicalWordDistributions.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_topicalWordDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int k = 0; k < nTopics; k++) {
 				String text = Integer.toString(k);
@@ -2851,7 +2851,7 @@ public class MultiThreadMPHAT {
 
 	private void outputPostTopicTopWords(int k) {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_topTopicWords.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_topTopicWords.csv");
 			BufferedWriter bw = new BufferedWriter(new FileWriter(f.getAbsoluteFile()));
 			RankingTool rankTool = new RankingTool();
 			WeightedElement[] topWords = null;
@@ -2872,7 +2872,7 @@ public class MultiThreadMPHAT {
 	public void output_topicInterest() {
 		try {
 			File f = new File(
-					outputPath + "/" + nTopics + "/omega_" + omega + "/l_userTopicalInterestDistributions.csv");
+					outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_userTopicalInterestDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -2892,7 +2892,7 @@ public class MultiThreadMPHAT {
 
 	public void output_platformPreference() {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi
 					+ "/l_userTopicalPlatformPreferenceDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
@@ -2915,7 +2915,7 @@ public class MultiThreadMPHAT {
 
 	public void output_authority() {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_userAuthorityDistributions.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_userAuthorityDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -2935,7 +2935,7 @@ public class MultiThreadMPHAT {
 
 	public void output_hub() {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_userHubDistributions.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_userHubDistributions.csv");
 			FileWriter fo = new FileWriter(f);
 			for (int u = 0; u < dataset.nUsers; u++) {
 				User currUser = dataset.users[u];
@@ -3029,7 +3029,7 @@ public class MultiThreadMPHAT {
 
 	public void output_OptLikelihoodPerplexity() {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_OptLikelihoodPerplexity.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_OptLikelihoodPerplexity.csv");
 			FileWriter fo = new FileWriter(f);
 			fo.write("PostLogLikelihood:" + postOptLogLikelidhood + "\n");
 			fo.write("PostLogPerplexity:" + postOptLogPerplexity + "\n");
@@ -3043,7 +3043,7 @@ public class MultiThreadMPHAT {
 
 	public void output_LastLikelihoodPerplexity() {
 		try {
-			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "/l_LastLikelihoodPerplexity.csv");
+			File f = new File(outputPath + "/" + nTopics + "/omega_" + omega + "_phi_" + phi + "/l_LastLikelihoodPerplexity.csv");
 			FileWriter fo = new FileWriter(f);
 			fo.write("PostLogLikelihood:" + postLastLogLikelidhood + "\n");
 			fo.write("PostLogPerplexity:" + postLastLogPerplexity + "\n");
@@ -3067,15 +3067,14 @@ public class MultiThreadMPHAT {
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath =
 		// "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
-		// String datasetPath =
-		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
-		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
+		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
+		//String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
 		// String datasetPath =
 		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
 		int nTopics = 12;
 		int batch = 1;
-		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch, null);
+		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch, datasetPath);
 
 		// model.getThreadIndexes();
 		// model.init();
