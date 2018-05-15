@@ -58,6 +58,7 @@ public class Prediction {
 	private int[] testPlatforms;
 	private double[] predictionScores;
 	private HashMap<String, double[]> user_precision_at_k;
+	private HashMap<String, Double> user_mrr;
 	
 
 	/***
@@ -195,8 +196,7 @@ public class Prediction {
 
 		output_PredictionScores();
 		output_EvaluatePlatformSpecificUserLevelPrecisionRecall(5);
-		output_EvaluatePlatformCombinedUserLevelPrecisionRecall(5);
-
+		
 	}
 
 	private int loadUserAuthorities(String filename, int nTopics) {
@@ -916,6 +916,7 @@ public class Prediction {
 		//init user-level_prec
 		double[] prec;
 		user_precision_at_k = new HashMap<String, double[]>();
+		user_mrr = new HashMap<String, Double>();
 		for (int u = 0; u < users.length; u++) {
 			String uid = users[u];
 			prec = new double[k];
@@ -984,6 +985,7 @@ public class Prediction {
 							}
 						}
 					}
+					user_mrr.put(uid, (double) 1 / (double) rank[iRank]);
 					iRank++;
 				}
 			}
@@ -1019,11 +1021,19 @@ public class Prediction {
 				FileWriter fo = new FileWriter(f, false);
 				for (int u = 0; u < users.length; u++) {
 					String uid = users[u];
+					
 					fo.write(uid);
 					double[] precs = user_precision_at_k.get(uid);
 					for (int i = 0; i < k; i++) {
 						fo.write("," + precs[i]);
 					}
+					if (user_mrr.containsKey(uid)){
+						double cuser_mrr = user_mrr.get(uid);
+						fo.write("," + cuser_mrr);
+					} else {
+						fo.write(",0");
+					}
+					
 					fo.write("\n");
 				}
 				fo.close();
@@ -1035,156 +1045,6 @@ public class Prediction {
 		}
 	}
 	
-	private void output_EvaluatePlatformCombinedUserLevelPrecisionRecall(int k) {
-		double[] precision = new double[k];
-		double[] recall = new double[k];
-
-		HashMap<String, HashMap<Integer, ArrayList<Integer>>> UserLinkLabels = new HashMap<String, HashMap<Integer, ArrayList<Integer>>>();
-		for (int i = 0; i < testSrcUsers.length; i++) {
-			String uid = testSrcUsers[i];
-			int platform = testPlatforms[i];
-			if (UserLinkLabels.containsKey(uid)) {
-				if (UserLinkLabels.get(uid).containsKey(platform)) {
-					continue;
-				}
-				UserLinkLabels.get(uid).put(platform, new ArrayList<Integer>());
-			} else {
-				HashMap<Integer, ArrayList<Integer>> platforms = new HashMap<Integer, ArrayList<Integer>>();
-				platforms.put(platform, new ArrayList<Integer>());
-				UserLinkLabels.put(uid, platforms);
-			}
-		}
-
-		Map<Integer, Double> mapPredictionScores = new HashMap<Integer, Double>();
-		for (int s = 0; s < predictionScores.length; s++) {
-			mapPredictionScores.put(s, predictionScores[s]);
-		}
-		List<Entry<Integer, Double>> sortedScores = sortByValue(mapPredictionScores);
-		for (Map.Entry<Integer, Double> entry : sortedScores) {
-			int index = entry.getKey();
-			String uid = testSrcUsers[index];
-			int platform = testPlatforms[index];
-			UserLinkLabels.get(uid).get(platform).add(testLabels[index]);
-		}
-		
-		//init user-level_prec
-		double[] prec;
-		user_precision_at_k = new HashMap<String, double[]>();
-		for (int u = 0; u < users.length; u++) {
-			String uid = users[u];
-			prec = new double[k];
-			for (int i = 0; i < k; i++){
-				prec[i] = 0;
-			}
-			user_precision_at_k.put(uid, prec);
-		}
-
-		for (int p = 0; p < nPlatforms; p++) {
-			for (int i = 0; i < k; i++) {
-				int checkPosCount = 0;
-				int currK = i + 1;
-				float sumPrecision = 0;
-				float sumRecall = 0;
-				int count = 0;
-				for (int u = 0; u < users.length; u++) {
-					String uid = users[u];
-					
-						int posCount = 0;
-						if (userTestPositiveLinkCount.containsKey(uid) && userTestNegativeLinkCount.containsKey(uid)) {
-
-							checkPosCount += userTestPositiveLinkCount.get(uid)[p];
-							count++;
-							ArrayList<Integer> labels = UserLinkLabels.get(uid).get(p);
-							for (int j = 0; j < currK; j++) {
-								if (labels.get(j) == 1) {
-									posCount++;
-								}
-							}
-							double[] currPrec = user_precision_at_k.get(uid);
-							currPrec[i] = (float) posCount / (float) currK;
-							user_precision_at_k.put(uid, currPrec);
-							
-							sumPrecision += (float) posCount / (float) currK;
-							sumRecall += (float) posCount / (float) userTestPositiveLinkCount.get(uid)[p];
-						}
-					
-					
-				}
-				System.out.println("#PositiveLinks@" + k + ": " + checkPosCount);
-				precision[i] = sumPrecision / count;
-				recall[i] = sumRecall / count;
-
-			}
-
-			int[] rank = new int[users.length];
-			int iRank = 0;
-			for (int u = 0; u < users.length; u++) {
-				String uid = users[u];
-					rank[iRank] = 0;
-					int posCount = 0;
-					if (userTestPositiveLinkCount.containsKey(uid) && userTestNegativeLinkCount.containsKey(uid)) {
-						ArrayList<Integer> labels = UserLinkLabels.get(uid).get(p);
-						for (int j = 0; j < labels.size(); j++) {
-							if (labels.get(j) == 1) {
-								posCount++;
-								if (posCount == 1) {
-									rank[iRank] = j + 1;
-									break;
-								}
-							}
-						}
-					}
-					iRank++;
-				
-			}
-
-			double sumMRR = 0f;
-			double mrr = 0f;
-			int countMRR = 0;
-			for (int i = 0; i < rank.length; i++) {
-				if (rank[i] != 0) {
-					sumMRR += (double) 1 / (double) rank[i];
-					countMRR++;
-				}
-			}
-			mrr = sumMRR / countMRR;
-
-			try {
-				File f = new File(outputPath + "/combinedPlatform_" + predMode + "_UserLevel_PrecisionRecall.csv");
-				FileWriter fo = new FileWriter(f, false);
-
-				for (int i = 0; i < k; i++) {
-					fo.write(i + "," + precision[i] + "," + recall[i] + "\n");
-				}
-				fo.write("MRR," + mrr + "," + mrr + "\n");
-				fo.close();
-			} catch (Exception e) {
-				System.out.println("Error in writing out post topic top words to file!");
-				e.printStackTrace();
-				System.exit(0);
-			}
-			
-			try {
-				File f = new File(outputPath + "/combinedPlatform_" + predMode + "_User_Precisions.csv");
-				FileWriter fo = new FileWriter(f, false);
-				for (int u = 0; u < users.length; u++) {
-					String uid = users[u];
-					fo.write(uid);
-					double[] precs = user_precision_at_k.get(uid);
-					for (int i = 0; i < k; i++) {
-						fo.write("," + precs[i]);
-					}
-					fo.write("\n");
-				}
-				fo.close();
-			} catch (Exception e) {
-				System.out.println("Error in writing out post topic top words to file!");
-				e.printStackTrace();
-				System.exit(0);
-			}
-		}
-	}
-
 	private <K, V extends Comparable<? super V>> List<Entry<K, V>> sortByValue(Map<K, V> map) {
 		List<Entry<K, V>> sortedEntries = new ArrayList<Entry<K, V>>(map.entrySet());
 		Collections.sort(sortedEntries, new Comparator<Entry<K, V>>() {

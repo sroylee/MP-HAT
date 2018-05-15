@@ -54,8 +54,8 @@ public class MultiThreadMPHAT {
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
 	public static double lamda = 0.01;
-	public static double omega = 10; // regularization for hub
-	public static double phi = 10; // regularization for authority
+	public static double omega = 15; // regularization for hub
+	public static double phi = 5; // regularization for authority
 
 	public static Random rand;
 
@@ -3072,7 +3072,7 @@ public class MultiThreadMPHAT {
 		// String datasetPath =
 		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
-		int nTopics = 12;
+		int nTopics = 10;
 		int batch = 1;
 		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch, datasetPath);
 
