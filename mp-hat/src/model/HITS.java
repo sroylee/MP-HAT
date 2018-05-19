@@ -37,6 +37,7 @@ public class HITS {
 		}
 		for (int u = 0; u < nUsers; u++) {
 			User currUser = dataset.users[u];
+			if (currUser.followers != null) {
 			for (int i = 0; i < currUser.followers.length; i++) {
 				if (currUser.followerBatches[i] == 1) {
 					//int in_link_index = currUser.followers[i];
@@ -44,12 +45,15 @@ public class HITS {
 					aInMatrix[u][in_link_index] = 1;
 				}
 			}
+			}
+			if (currUser.followings != null) {
 			for (int i = 0; i < currUser.followings.length; i++) {
 				if (currUser.followingBatches[i] == 1) {
 					//int out_link_index = currUser.followings[i];
 					int out_link_index = currUser.followings[i].followingIndex;
 					aOutMatrix[u][out_link_index] = 1;
 				}
+			}
 			}
 		}
 	}
@@ -87,7 +91,7 @@ public class HITS {
 	}
 	
 	public static void main(String[] args) {
-		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
+		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
 		int batch = 1;
 		HITS hits = new HITS(datasetPath, batch);
 		

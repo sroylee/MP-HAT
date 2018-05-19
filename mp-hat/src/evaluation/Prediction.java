@@ -57,14 +57,17 @@ public class Prediction {
 	private int[] testLabels;
 	private int[] testPlatforms;
 	private double[] predictionScores;
+	private HashMap<String, double[]> user_precision_at_k;
+	private HashMap<String, Double> user_mrr;
+	
 
 	/***
 	 * read dataset from folder "path"
 	 * 
 	 * @param dataPath
 	 */
-	public Prediction(String _path, String _resultPath, int _nTopics,
-			int _nPlatforms, int _testBatch, PredictionMode _predMode, String _outputPath) {
+	public Prediction(String _path, String _resultPath, int _nTopics, int _nPlatforms, int _testBatch,
+			PredictionMode _predMode, String _outputPath) {
 		this.dataPath = _path;
 		this.resultPath = _resultPath;
 		this.nTopics = _nTopics;
@@ -72,17 +75,17 @@ public class Prediction {
 		this.testBatch = _testBatch;
 		this.predMode = _predMode;
 		this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		if (predMode == PredictionMode.HAT) {
-//			this.outputPath = String.format("%s/%d",_outputPath, nTopics);
-//		} else if (predMode == PredictionMode.WTFW) {
-//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		} else if (predMode == PredictionMode.CTR) {
-//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		} else if (predMode == PredictionMode.COMMON_INTEREST) {
-//			this.outputPath = String.format("%s/%d", _outputPath, nTopics);
-//		} else {
-//			this.outputPath = _outputPath;
-//		}
+		// if (predMode == PredictionMode.HAT) {
+		// this.outputPath = String.format("%s/%d",_outputPath, nTopics);
+		// } else if (predMode == PredictionMode.WTFW) {
+		// this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+		// } else if (predMode == PredictionMode.CTR) {
+		// this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+		// } else if (predMode == PredictionMode.COMMON_INTEREST) {
+		// this.outputPath = String.format("%s/%d", _outputPath, nTopics);
+		// } else {
+		// this.outputPath = _outputPath;
+		// }
 
 		File theDir = new File(outputPath);
 
@@ -130,7 +133,7 @@ public class Prediction {
 			System.out.println("compute prediction scores");
 			computeMPHATScores();
 
-		}else if (predMode == PredictionMode.MPHAT_TI) {
+		} else if (predMode == PredictionMode.MPHAT_TI) {
 			loadTestData(relationshipFile, userFile);
 
 			String authFilePath = String.format("%s/l_userAuthorityDistributions.csv", resultPath);
@@ -141,8 +144,7 @@ public class Prediction {
 			int hubSize = loadUserHubs(hubFilePath, nTopics);
 			System.out.println("loaded hubs of " + hubSize + " users");
 
-			String preferenceFilePath = String.format("%s/l_userPlatformPreferenceDistributions.csv",
-					resultPath);
+			String preferenceFilePath = String.format("%s/l_userPlatformPreferenceDistributions.csv", resultPath);
 			int preferenceSize = loadUserTopicIndependentPlatformPreferences(preferenceFilePath, nTopics, nPlatforms);
 			System.out.println("loaded platform of " + preferenceSize + " users");
 
@@ -171,8 +173,7 @@ public class Prediction {
 		else if (predMode == PredictionMode.COMMON_INTEREST) {
 			loadTestData(relationshipFile, userFile);
 
-			String interestFilePath = String.format("%s/l_GibbUserTopicalInterestDistributions.csv",
-					resultPath);
+			String interestFilePath = String.format("%s/l_GibbUserTopicalInterestDistributions.csv", resultPath);
 			int interestSize = loadUserInterests(interestFilePath, nTopics);
 			System.out.println("loaded interests of " + interestSize + " users");
 
@@ -185,7 +186,6 @@ public class Prediction {
 			computeCommonDirectedNeighborScores();
 		} else if (predMode == PredictionMode.HITS) {
 			loadTestData(relationshipFile, userFile);
-
 			loadTraditionalHITS(hitsFile);
 			computeHITSScores();
 		} else if (predMode == PredictionMode.WTFW) {
@@ -196,7 +196,7 @@ public class Prediction {
 
 		output_PredictionScores();
 		output_EvaluatePlatformSpecificUserLevelPrecisionRecall(5);
-
+		
 	}
 
 	private int loadUserAuthorities(String filename, int nTopics) {
@@ -335,7 +335,7 @@ public class Prediction {
 		for (int i = 0; i < users.length; i++) {
 			preferences = new double[nPlatforms];
 			for (int p = 0; p < nPlatforms; p++) {
-					preferences[p] = Double.NEGATIVE_INFINITY;
+				preferences[p] = Double.NEGATIVE_INFINITY;
 			}
 			userTopicIndependentPlatformPreferences.put(users[i], preferences);
 		}
@@ -728,7 +728,7 @@ public class Prediction {
 			predictionScores[i] = HupAvp;
 		}
 	}
-	
+
 	private void computeMPHATTIScores() {
 		String uid = "";
 		String vid = "";
@@ -912,6 +912,19 @@ public class Prediction {
 			int platform = testPlatforms[index];
 			UserLinkLabels.get(uid).get(platform).add(testLabels[index]);
 		}
+		
+		//init user-level_prec
+		double[] prec;
+		user_precision_at_k = new HashMap<String, double[]>();
+		user_mrr = new HashMap<String, Double>();
+		for (int u = 0; u < users.length; u++) {
+			String uid = users[u];
+			prec = new double[k];
+			for (int i = 0; i < k; i++){
+				prec[i] = 0;
+			}
+			user_precision_at_k.put(uid, prec);
+		}
 
 		for (int p = 0; p < nPlatforms; p++) {
 			for (int i = 0; i < k; i++) {
@@ -923,26 +936,28 @@ public class Prediction {
 				for (int u = 0; u < users.length; u++) {
 					String uid = users[u];
 					String[] uPlatform = userPlatforms.get(uid).split(" ");
+					
 					if (uPlatform[p].equals("1")) {
 						int posCount = 0;
-						if (userTestPositiveLinkCount.containsKey(uid)
-								&& userTestPositiveLinkCount.get(uid)[p] >= currK) {
-							if (userTestNegativeLinkCount.containsKey(uid)
-									&& userTestNegativeLinkCount.get(uid)[p] >= currK) {
-								checkPosCount += userTestPositiveLinkCount.get(uid)[p];
-								count++;
-								ArrayList<Integer> labels = UserLinkLabels.get(uid).get(p);
-								for (int j = 0; j < currK; j++) {
-									if (labels.get(j) == 1) {
-										posCount++;
-									}
+						if (userTestPositiveLinkCount.containsKey(uid) && userTestNegativeLinkCount.containsKey(uid)) {
+
+							checkPosCount += userTestPositiveLinkCount.get(uid)[p];
+							count++;
+							ArrayList<Integer> labels = UserLinkLabels.get(uid).get(p);
+							for (int j = 0; j < currK; j++) {
+								if (labels.get(j) == 1) {
+									posCount++;
 								}
-								sumPrecision += (float) posCount / (float) currK;
-								sumRecall += (float) posCount / (float) userTestPositiveLinkCount.get(uid)[p];
 							}
+							double[] currPrec = user_precision_at_k.get(uid);
+							currPrec[i] = (float) posCount / (float) currK;
+							user_precision_at_k.put(uid, currPrec);
+							
+							sumPrecision += (float) posCount / (float) currK;
+							sumRecall += (float) posCount / (float) userTestPositiveLinkCount.get(uid)[p];
 						}
 					}
-
+					
 				}
 				System.out.println("#PositiveLinks@" + k + ": " + checkPosCount);
 				precision[i] = sumPrecision / count;
@@ -970,6 +985,7 @@ public class Prediction {
 							}
 						}
 					}
+					user_mrr.put(uid, (double) 1 / (double) rank[iRank]);
 					iRank++;
 				}
 			}
@@ -994,6 +1010,32 @@ public class Prediction {
 				}
 				fo.write("MRR," + mrr + "," + mrr + "\n");
 				fo.close();
+			} catch (Exception e) {
+				System.out.println("Error in writing out post topic top words to file!");
+				e.printStackTrace();
+				System.exit(0);
+			}
+			
+			try {
+				File f = new File(outputPath + "/" + p + "_" + predMode + "_User_Precisions.csv");
+				FileWriter fo = new FileWriter(f, false);
+				for (int u = 0; u < users.length; u++) {
+					String uid = users[u];
+					
+					fo.write(uid);
+					double[] precs = user_precision_at_k.get(uid);
+					for (int i = 0; i < k; i++) {
+						fo.write("," + precs[i]);
+					}
+					if (user_mrr.containsKey(uid)){
+						double cuser_mrr = user_mrr.get(uid);
+						fo.write("," + cuser_mrr);
+					} else {
+						fo.write(",0");
+					}
+					
+					fo.write("\n");
+				}
 				fo.close();
 			} catch (Exception e) {
 				System.out.println("Error in writing out post topic top words to file!");
@@ -1002,7 +1044,7 @@ public class Prediction {
 			}
 		}
 	}
-
+	
 	private <K, V extends Comparable<? super V>> List<Entry<K, V>> sortByValue(Map<K, V> map) {
 		List<Entry<K, V>> sortedEntries = new ArrayList<Entry<K, V>>(map.entrySet());
 		Collections.sort(sortedEntries, new Comparator<Entry<K, V>>() {
