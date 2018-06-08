@@ -91,7 +91,7 @@ public class HITS {
 	}
 	
 	public static void main(String[] args) {
-		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
+		String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance_2";
 		int batch = 1;
 		HITS hits = new HITS(datasetPath, batch);
 		

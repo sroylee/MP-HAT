@@ -913,20 +913,20 @@ public class Prediction {
 			UserLinkLabels.get(uid).get(platform).add(testLabels[index]);
 		}
 		
-		//init user-level_prec
-		double[] prec;
-		user_precision_at_k = new HashMap<String, double[]>();
-		user_mrr = new HashMap<String, Double>();
-		for (int u = 0; u < users.length; u++) {
-			String uid = users[u];
-			prec = new double[k];
-			for (int i = 0; i < k; i++){
-				prec[i] = 0;
-			}
-			user_precision_at_k.put(uid, prec);
-		}
-
 		for (int p = 0; p < nPlatforms; p++) {
+			//init user-level_prec
+			double[] prec;
+			user_precision_at_k = new HashMap<String, double[]>();
+			user_mrr = new HashMap<String, Double>();
+			for (int u = 0; u < users.length; u++) {
+				String uid = users[u];
+				prec = new double[k];
+				for (int i = 0; i < k; i++){
+					prec[i] = 0;
+				}
+				user_precision_at_k.put(uid, prec);
+			}
+			
 			for (int i = 0; i < k; i++) {
 				int checkPosCount = 0;
 				int currK = i + 1;

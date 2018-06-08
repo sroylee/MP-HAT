@@ -43,7 +43,7 @@ public class MultiThreadMPHAT {
 
 	public static int gibbs_BurningPeriods = 50;
 	public static int max_Gibbs_Iterations = 200; // 200
-	public static int gibbs_Sampling_Gap = 10; // 10
+	public static int gibbs_Sampling_Gap = 20; // 10
 
 	// priors
 	public static double alpha;// prior for users' platform preferences
@@ -54,8 +54,8 @@ public class MultiThreadMPHAT {
 	public static double gamma; // variance of topic word distribution
 	public static double epsilon = 0.000001;
 	public static double lamda = 0.01;
-	public static double omega = 15; // regularization for hub
-	public static double phi = 5; // regularization for authority
+	public static double omega = 35; // regularization for hub
+	public static double phi = 1; // regularization for authority
 
 	public static Random rand;
 
@@ -3054,27 +3054,25 @@ public class MultiThreadMPHAT {
 			System.exit(0);
 		}
 	}
-
+	
 	public static void main(String[] args) {
-		// String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
+		//String datasetPath = "E:/code/java/MP-HAT/mp-hat/syn_data/";
 		// String datasetPath =
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
-		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
-		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/combined";
-		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
-		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
-		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/twitter";
+		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance";
+		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance";
+		String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance_2";
+		// String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance/instagram";
+		// String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/hat_data/instagram";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
-		// String datasetPath =
-		// "E:/users/roylee.2013/MP-HAT/mp-hat/hat_data/twitter";
-		 String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance";
-		//String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/balance/instagram";
-		// String datasetPath =
-		// "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
-		int nTopics = 10;
+		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/combined";
+		int nTopics = 12;
 		int batch = 1;
 		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch, datasetPath);
+		
+		//nTopics = 20;
+		//model = new MultiThreadMPHAT(datasetPath, nTopics, batch);
 
 		// model.getThreadIndexes();
 		// model.init();
