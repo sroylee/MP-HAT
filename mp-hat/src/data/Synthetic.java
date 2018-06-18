@@ -66,7 +66,10 @@ public class Synthetic {
 											// summing
 											// up to 99%
 	private double singlePlatformProp = 0.0;
-	private double platformPreferenceUniformity;
+	private double platformPreferenceUniformity = 0.9;
+
+	private double proportionHubUsers = 0.1;
+	private double proportionAuthoritativeUsers = 0.1;
 
 	private int minNPosts = 100;
 	private int maxNPosts = 200;
@@ -238,6 +241,16 @@ public class Synthetic {
 
 	private double[][] genUserAuthority(int nUsers, int nTopics, double[][] userLatentFactors) {
 		double[][] authorities = new double[nUsers][nTopics];
+
+		HashSet<Integer> authoritativeUsers = new HashSet<Integer>();
+		while (authoritativeUsers.size() < proportionAuthoritativeUsers * nUsers) {
+			int u = rand.nextInt(nUsers);
+			while (authoritativeUsers.contains(u)) {
+				u = rand.nextInt(nUsers);
+			}
+			authoritativeUsers.add(u);
+		}
+
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
 				// GammaDistribution gammaDistribution = new
@@ -261,9 +274,13 @@ public class Synthetic {
 				// omega);
 				// authorities[u][z] = gammaDistribution.sample();
 
-				authorities[u][z] = userLatentFactors[u][z];
-				if (authorities[u][z] < epsilon) {
-					authorities[u][z] = epsilon;
+				if (authoritativeUsers.contains(u)) {
+					authorities[u][z] = userLatentFactors[u][z];
+					if (authorities[u][z] < epsilon) {
+						authorities[u][z] = epsilon;
+					}
+				} else {
+					authorities[u][z] = rand.nextDouble();
 				}
 			}
 		}
@@ -272,6 +289,16 @@ public class Synthetic {
 
 	private double[][] genUserHub(int nUsers, int nTopics, double[][] userLatentFactors) {
 		double[][] hubs = new double[nUsers][nTopics];
+
+		HashSet<Integer> hubUsers = new HashSet<Integer>();
+		while (hubUsers.size() < proportionHubUsers * nUsers) {
+			int u = rand.nextInt(nUsers);
+			while (hubUsers.contains(u)) {
+				u = rand.nextInt(nUsers);
+			}
+			hubUsers.add(u);
+		}
+
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
 				// GammaDistribution gammaDistribution = new
@@ -293,9 +320,13 @@ public class Synthetic {
 				// omega);
 				// hubs[u][z] = gammaDistribution.sample();
 
-				hubs[u][z] = userLatentFactors[u][z];
-				if (hubs[u][z] < epsilon) {
-					hubs[u][z] = epsilon;
+				if (hubUsers.contains(u)) {
+					hubs[u][z] = userLatentFactors[u][z];
+					if (hubs[u][z] < epsilon) {
+						hubs[u][z] = epsilon;
+					}
+				} else {
+					hubs[u][z] = rand.nextDouble();
 				}
 			}
 		}
@@ -545,7 +576,6 @@ public class Synthetic {
 	public void genData(int nUsers, int nPlatforms, int nTopics, int nWords, String outputPath) {
 		double[][] topics = genTopics(nTopics, nWords);
 		double[][] userLatentFactors = genUserLatentFactors(nUsers, nTopics);
-		platformPreferenceUniformity = 0.9;
 		int[][] userActivePlatforms = genUserActivePlatforms(nUsers, nPlatforms, singlePlatformProp);
 		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms,
 				userActivePlatforms);
