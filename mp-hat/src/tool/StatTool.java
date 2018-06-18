@@ -210,6 +210,22 @@ public class StatTool {
 		return instance;
 	}
 
+	public double[] sampleNearUniform(int dim, double uniformity, Random rand) {
+		if (uniformity < 0 || uniformity > 1) {
+			System.out.printf("uniformity should be in [0, 1]");
+			System.exit(-1);
+		}
+		double[] sample = new double[dim];
+		for (int i = 0; i < dim; i++) {
+			sample[i] = uniformity / dim;
+		}
+		double[] complementary = sampleDirichletSkew(1, dim, rand.nextInt(dim), 0.9);
+		for (int i = 0; i < dim; i++) {
+			sample[i] += (1 - uniformity) * complementary[i];
+		}
+		return sample;
+	}
+
 	public double getKLDistance(double[] p, double[] q) {
 		int d = 0;
 		for (int i = 0; i < p.length; i++) {

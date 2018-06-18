@@ -66,7 +66,7 @@ public class Synthetic {
 											// summing
 											// up to 99%
 	private double singlePlatformProp = 0.0;
-	private double platformSkeness;
+	private double platformPreferenceUniformity;
 
 	private int minNPosts = 100;
 	private int maxNPosts = 200;
@@ -120,9 +120,9 @@ public class Synthetic {
 
 			for (int z = 0; z < nTopics; z++) {
 				userLatentFactor[u][z] = Math.log(norm * userLatentFactor[u][z]);
-				if (userLatentFactor[u][z] < epsilon){
+				if (userLatentFactor[u][z] < epsilon) {
 					userLatentFactor[u][z] = epsilon;
-				}		
+				}
 			}
 		}
 		return userLatentFactor;
@@ -164,10 +164,17 @@ public class Synthetic {
 		double[][][] userPlatformPreference = new double[nUsers][nTopics][];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				//userPlatformPreference[u][z] = statTool.sampleDirichletSkew(alpha, nPlatforms, platformSkeness, mass,rand);
-				userPlatformPreference[u][z] = new double[nPlatforms];
-				userPlatformPreference[u][z][0] = 0.5;
-				userPlatformPreference[u][z][1] = 0.5;
+				// userPlatformPreference[u][z] =
+				// statTool.sampleDirichletSkew(alpha, nPlatforms,
+				// platformSkewness, mass,
+				// rand);
+
+				userPlatformPreference[u][z] = statTool.sampleNearUniform(nPlatforms, platformPreferenceUniformity,
+						rand);
+
+				// userPlatformPreference[u][z] = new double[nPlatforms];
+				// userPlatformPreference[u][z][0] = 0.5;
+				// userPlatformPreference[u][z][1] = 0.5;
 
 				double min = Double.POSITIVE_INFINITY;
 				for (int p = 0; p < nPlatforms; p++) {
@@ -248,14 +255,16 @@ public class Synthetic {
 				// GammaDistribution gammaDistribution = new
 				// GammaDistribution(sigma + userLatentFactors[u][z],
 				// Math.sqrt(userLatentFactors[u][z]));
-				
-				 //GammaDistribution gammaDistribution = new GammaDistribution(sigma, (userLatentFactors[u][z] / sigma) * omega);
-				 //authorities[u][z] = gammaDistribution.sample();
-				 
+
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(sigma, (userLatentFactors[u][z] / sigma) *
+				// omega);
+				// authorities[u][z] = gammaDistribution.sample();
+
 				authorities[u][z] = userLatentFactors[u][z];
-				if (authorities[u][z] < epsilon){
-					 authorities[u][z] = epsilon;
-					}
+				if (authorities[u][z] < epsilon) {
+					authorities[u][z] = epsilon;
+				}
 			}
 		}
 		return authorities;
@@ -279,13 +288,15 @@ public class Synthetic {
 				// GammaDistribution(delta + userLatentFactors[u][z],
 				// Math.sqrt(userLatentFactors[u][z]));
 				// hubs[u][z] = gammaDistribution.sample();
-				//GammaDistribution gammaDistribution = new GammaDistribution(delta, (userLatentFactors[u][z] / delta) * omega);
-				//hubs[u][z] = gammaDistribution.sample();
-				
+				// GammaDistribution gammaDistribution = new
+				// GammaDistribution(delta, (userLatentFactors[u][z] / delta) *
+				// omega);
+				// hubs[u][z] = gammaDistribution.sample();
+
 				hubs[u][z] = userLatentFactors[u][z];
-				if (hubs[u][z] < epsilon){
+				if (hubs[u][z] < epsilon) {
 					hubs[u][z] = epsilon;
-					}
+				}
 			}
 		}
 		return hubs;
@@ -534,8 +545,7 @@ public class Synthetic {
 	public void genData(int nUsers, int nPlatforms, int nTopics, int nWords, String outputPath) {
 		double[][] topics = genTopics(nTopics, nWords);
 		double[][] userLatentFactors = genUserLatentFactors(nUsers, nTopics);
-		platformSkeness = 1d / nPlatforms;
-		//platformSkeness = 1;
+		platformPreferenceUniformity = 0.9;
 		int[][] userActivePlatforms = genUserActivePlatforms(nUsers, nPlatforms, singlePlatformProp);
 		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms,
 				userActivePlatforms);
@@ -567,8 +577,9 @@ public class Synthetic {
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		// generator.testTuple();
-		//generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
-		 generator.genData(100, 2, 10, 10000, "F:/users/roylee/MP-HAT/mp-hat/syn_data");
+		generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
+		// generator.genData(100, 2, 10, 10000,
+		// "F:/users/roylee/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
 
