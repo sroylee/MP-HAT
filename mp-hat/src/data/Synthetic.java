@@ -65,7 +65,7 @@ public class Synthetic {
 											// of words whose probabilities
 											// summing
 											// up to 99%
-	private double singlePlatformProp = 0.3;
+	private double singlePlatformProp = 0.0;
 	private double platformSkeness;
 
 	private int minNPosts = 100;
@@ -164,8 +164,10 @@ public class Synthetic {
 		double[][][] userPlatformPreference = new double[nUsers][nTopics][];
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
-				userPlatformPreference[u][z] = statTool.sampleDirichletSkew(alpha, nPlatforms, platformSkeness, mass,
-						rand);
+				//userPlatformPreference[u][z] = statTool.sampleDirichletSkew(alpha, nPlatforms, platformSkeness, mass,rand);
+				userPlatformPreference[u][z] = new double[nPlatforms];
+				userPlatformPreference[u][z][0] = 0.5;
+				userPlatformPreference[u][z][1] = 0.5;
 
 				double min = Double.POSITIVE_INFINITY;
 				for (int p = 0; p < nPlatforms; p++) {
@@ -533,6 +535,7 @@ public class Synthetic {
 		double[][] topics = genTopics(nTopics, nWords);
 		double[][] userLatentFactors = genUserLatentFactors(nUsers, nTopics);
 		platformSkeness = 1d / nPlatforms;
+		//platformSkeness = 1;
 		int[][] userActivePlatforms = genUserActivePlatforms(nUsers, nPlatforms, singlePlatformProp);
 		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms,
 				userActivePlatforms);
@@ -565,7 +568,7 @@ public class Synthetic {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		// generator.testTuple();
 		//generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
-		 generator.genData(100, 2, 10, 10000, "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data");
+		 generator.genData(100, 2, 10, 10000, "F:/users/roylee/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
 

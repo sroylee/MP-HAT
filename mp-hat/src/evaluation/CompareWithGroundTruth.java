@@ -5,12 +5,20 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 import tool.HungaryMethod;
 import tool.MathTool;
 import tool.Vector;
+import org.apache.commons.math3.stat.correlation.*;
 
 public class CompareWithGroundTruth {
 
@@ -18,7 +26,7 @@ public class CompareWithGroundTruth {
 	private boolean userInterest = true;
 	private boolean userAuthority = true;
 	private boolean userHub = true;
-	private boolean userPlatformPreference = true;
+	private boolean userPlatformPreference = false;
 
 	private String groundtruthPath;
 	private String learntPath;
@@ -39,6 +47,8 @@ public class CompareWithGroundTruth {
 	private double[][][] g_userPlatformPreferenceDistributions;
 	private double[][] g_userAuthorityDistributions;
 	private double[][] g_userHubDistributions;
+	private double[][][] g_platformTopicalAuthorities;
+	private double[][][] g_platformTopicalHubs;
 
 	// learnt params are prefixed by "l"
 	private double[][] l_topicWordDistributions;
@@ -46,6 +56,8 @@ public class CompareWithGroundTruth {
 	private double[][][] l_userPlatformPreferenceDistributions;
 	private double[][] l_userAuthorityDistributions;
 	private double[][] l_userHubDistributions;
+	private double[][][] l_platformTopicalAuthorities;
+	private double[][][] l_platformTopicalHubs;
 
 	private int[] glMatch;
 	private int[] lgMatch;
@@ -147,21 +159,44 @@ public class CompareWithGroundTruth {
 			}
 
 			// User Platform Preference
-			if (userPlatformPreference) {
-				filename = String.format("%s/userPlatformPreference.csv", groundtruthPath);
-				g_userPlatformPreferenceDistributions = new double[nUsers][nTopics][nPlatforms];
-				br = new BufferedReader(new FileReader(filename));
-				line = null;
-				while ((line = br.readLine()) != null) {
-					String[] tokens = line.split(",");
-					int u = userId2Index.get(tokens[0]);
-					int z = Integer.parseInt(tokens[1]);
-					for (int p = 2; p < tokens.length; p++) {
-						g_userPlatformPreferenceDistributions[u][z][p - 2] = Double.parseDouble(tokens[p]);
+			filename = String.format("%s/userPlatformPreference.csv", groundtruthPath);
+			g_userPlatformPreferenceDistributions = new double[nUsers][nTopics][nPlatforms];
+			br = new BufferedReader(new FileReader(filename));
+			line = null;
+			while ((line = br.readLine()) != null) {
+				String[] tokens = line.split(",");
+				int u = userId2Index.get(tokens[0]);
+				int z = Integer.parseInt(tokens[1]);
+				for (int p = 2; p < tokens.length; p++) {
+					g_userPlatformPreferenceDistributions[u][z][p - 2] = Double.parseDouble(tokens[p]);
+				}
+			}
+			br.close();
+			
+			// Platform Topical Authorities
+			g_platformTopicalAuthorities = new double[nPlatforms][nTopics][nUsers];
+			for (int p=0;p<nPlatforms;p++){
+				for (int k = 0; k < nTopics; k++) {
+					for (int u=0; u< nUsers; u++){
+						double [] preferences = new double[nPlatforms];
+						preferences = MathTool.softmax(g_userPlatformPreferenceDistributions[u][k]);
+						g_platformTopicalAuthorities[p][k][u] = g_userAuthorityDistributions[u][k] * preferences[p];
 					}
 				}
-				br.close();
 			}
+			
+			// Platform Topical Hubs
+			g_platformTopicalHubs = new double[nPlatforms][nTopics][nUsers];
+			for (int p=0;p<nPlatforms;p++){
+				for (int k = 0; k < nTopics; k++) {
+					for (int u=0; u< nUsers; u++){
+						double [] preferences = new double[nPlatforms];
+						preferences = MathTool.softmax(g_userPlatformPreferenceDistributions[u][k]);
+						g_platformTopicalHubs[p][k][u] = g_userHubDistributions[u][k] * preferences[p];
+					}
+				}
+			}
+			
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -266,6 +301,40 @@ public class CompareWithGroundTruth {
 				}
 				br.close();
 			}
+			
+			// Platform Topical Authorities
+			l_platformTopicalAuthorities = new double[nPlatforms][nTopics][nUsers];
+			for (int p=0;p<nPlatforms;p++){
+				for (int k = 0; k < nTopics; k++) {
+					for (int u=0; u< nUsers; u++){
+						if (userPlatformPreference){
+							double [] preferences = new double[nPlatforms];
+							preferences = MathTool.softmax(l_userPlatformPreferenceDistributions[u][k]);
+							l_platformTopicalAuthorities[p][k][u] = l_userAuthorityDistributions[u][k] * preferences[p];
+						} else {
+							l_platformTopicalAuthorities[p][k][u] = l_userAuthorityDistributions[u][k];
+						}	
+					}
+				}
+			}
+			
+			// Platform Topical Hubs
+			l_platformTopicalHubs = new double[nPlatforms][nTopics][nUsers];
+			for (int p=0;p<nPlatforms;p++){
+				for (int k = 0; k < nTopics; k++) {
+					for (int u=0; u< nUsers; u++){
+						if (userPlatformPreference){
+							double [] preferences = new double[nPlatforms];
+							preferences = MathTool.softmax(l_userPlatformPreferenceDistributions[u][k]);
+							l_platformTopicalHubs[p][k][u] = l_userHubDistributions[u][k] * preferences[p];
+						}else {
+							l_platformTopicalHubs[p][k][u] = l_userHubDistributions[u][k];
+						}
+					}
+				}
+			}			
+			
+			
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -362,128 +431,314 @@ public class CompareWithGroundTruth {
 				}
 			}
 			bw.close();
+			
 
 			// System.exit(-1);
-
-			System.out.println("measuring user authority distribution distance");
-			vector = new Vector();
-			filename = String.format("%s/userAuthorityDistance.csv", outputPath);
+			
+			System.out.println("measuring user authority Kendalls Correlation");
+			filename = String.format("%s/userAuthorityKendallsCorrelation.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
-			iter = userId2Index.entrySet().iterator();
-			int l_topic_max = 0;
-			int g_topic_max = 0;
-			double l_authority_max = 0.0;
-			double g_authority_max = 0.0;
-			while (iter.hasNext()) {
-				Map.Entry<String, Integer> pair = iter.next();
-				int u = pair.getValue();
-				l_authority_max = 0.0;
-				g_authority_max = 0.0;
+			HashMap<Integer, Double> g_userAuhority;
+			HashMap<Integer, Double> l_userAuhority;
+			HashMap<Integer, Double> sorted_g_userAuhority;
+			HashMap<Integer, Double> sorted_l_userAuhority;
+			//double[] g_authorityUsers = new double[nUsers];
+			//double[] l_authorityUsers = new double[nUsers];
+			double[] g_authorityUsers = new double[10];
+			double[] l_authorityUsers = new double[10];
+			double kendall = 0;
+			for (int p=0;p<nPlatforms;p++){
 				for (int k = 0; k < nTopics; k++) {
-					if (g_userAuthorityDistributions[u][k] > g_authority_max) {
-						g_authority_max = g_userAuthorityDistributions[u][k];
-						g_topic_max = k;
+					//Update the hashmap of authority users for a given topic k
+					g_userAuhority = new HashMap<Integer, Double>();
+					l_userAuhority = new HashMap<Integer, Double>();
+					for (int u=0; u<nUsers;u++){
+						g_userAuhority.put(u, g_platformTopicalAuthorities[p][k][u]);
+						l_userAuhority.put(u, l_platformTopicalAuthorities[p][glMatch[k]][u]);	
 					}
-				}
-				for (int k = 0; k < nTopics; k++) {
-					if (l_userAuthorityDistributions[u][k] > l_authority_max) {
-						l_authority_max = l_userAuthorityDistributions[u][k];
-						l_topic_max = k;
-					}
-				}
-				if (g_topic_max == lgMatch[l_topic_max]) {
-					bw.write(pair.getKey() + "," + 1 + "\n");
-					// bw.write(String.format("%s,%f\n", pair.getKey(), 1));
-				} else {
-					bw.write(pair.getKey() + "," + 0 + "\n");
-					// bw.write(String.format("%s,%f\n", pair.getKey(), 0));
+					//Sort the two hashmaps by value
+					sorted_g_userAuhority = sortByValues(g_userAuhority);
+					sorted_l_userAuhority = sortByValues(l_userAuhority);
+					
+					//update the g_authorityUsers array
+					Set set1 = sorted_g_userAuhority.entrySet();
+				    Iterator iterator1 = set1.iterator();
+				    int i = 0;
+				    while(iterator1.hasNext() && i<10) {
+				    	Map.Entry me1 = (Map.Entry)iterator1.next();
+				    	g_authorityUsers[i] = (int) me1.getKey();
+				    	i++;
+				    	
+				    }
+				    
+				    //update the l_authorityUsers array
+					Set set2 = sorted_l_userAuhority.entrySet();
+				    Iterator iterator2 = set2.iterator();
+				    i = 0;
+				    while(iterator2.hasNext() && i<10) {
+				    	Map.Entry me2 = (Map.Entry)iterator2.next();
+				    	l_authorityUsers[i] = (int) me2.getKey();
+				    	i++;	
+				    }
+				    
+				    double result =0;
+				    //result =  new KendallsCorrelation().correlation(g_authorityUsers,l_authorityUsers);
+				    result = jaccardSimilarity(g_authorityUsers,l_authorityUsers);
+				    System.out.println("Platform:"+p+", Topic:"+k+", Results:"+result);
+				    bw.write(p+","+k+","+result+"\n");  
 				}
 			}
 			bw.close();
-
-			System.out.println("measuring user hub distribution distance");
-			vector = new Vector();
-			filename = String.format("%s/userHubDistance.csv", outputPath);
+			
+			System.out.println("measuring user hub Kendalls Correlation");
+			filename = String.format("%s/userHubKendallsCorrelation.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
-			iter = userId2Index.entrySet().iterator();
-			l_topic_max = 0;
-			g_topic_max = 0;
-			while (iter.hasNext()) {
-				Map.Entry<String, Integer> pair = iter.next();
-				int u = pair.getValue();
-				l_authority_max = 0.0;
-				g_authority_max = 0.0;
+			HashMap<Integer, Double> g_userHub;
+			HashMap<Integer, Double> l_userHub;
+			HashMap<Integer, Double> sorted_g_userHub;
+			HashMap<Integer, Double> sorted_l_userHub;
+			//double[] g_hubUsers = new double[nUsers];
+			//double[] l_hubUsers = new double[nUsers];
+			double[] g_hubUsers = new double[10];
+			double[] l_hubUsers = new double[10];
+			kendall = 0;
+			for (int p=0;p<nPlatforms;p++){
 				for (int k = 0; k < nTopics; k++) {
-					if (g_userHubDistributions[u][k] > g_authority_max) {
-						g_authority_max = g_userHubDistributions[u][k];
-						g_topic_max = k;
+					//Update the hashmap of authority users for a given topic k
+					g_userHub = new HashMap<Integer, Double>();
+					l_userHub = new HashMap<Integer, Double>();
+					for (int u=0; u<nUsers;u++){
+						g_userHub.put(u, g_platformTopicalHubs[p][k][u]);
+						l_userHub.put(u, l_platformTopicalHubs[p][glMatch[k]][u]);	
 					}
-				}
-				for (int k = 0; k < nTopics; k++) {
-					if (l_userHubDistributions[u][k] > l_authority_max) {
-						l_authority_max = l_userHubDistributions[u][k];
-						l_topic_max = k;
-					}
-				}
-				if (g_topic_max == lgMatch[l_topic_max]) {
-					bw.write(pair.getKey() + "," + 1 + "\n");
-					// bw.write(String.format("%s,%f\n", pair.getKey(), 1));
-				} else {
-					bw.write(pair.getKey() + "," + 0 + "\n");
-					// bw.write(String.format("%s,%f\n", pair.getKey(), 0));
+					//Sort the two hashmaps by value
+					sorted_g_userHub = sortByValues(g_userHub);
+					sorted_l_userHub = sortByValues(l_userHub);
+					
+					//update the g_hubUsers array
+					Set set1 = sorted_g_userHub.entrySet();
+				    Iterator iterator1 = set1.iterator();
+				    int i = 0;
+				    while(iterator1.hasNext() && i<10) {
+				    	Map.Entry me1 = (Map.Entry)iterator1.next();
+				    	g_hubUsers[i] = (int) me1.getKey();
+				    	i++;
+				    }
+				    
+				    //update the l_hubUsers array
+					Set set2 = sorted_l_userHub.entrySet();
+				    Iterator iterator2 = set2.iterator();
+				    i = 0;
+				    while(iterator2.hasNext() && i<10) {
+				    	Map.Entry me2 = (Map.Entry)iterator2.next();
+				    	l_hubUsers[i] = (int) me2.getKey();
+				    	i++;
+				    }
+				    
+				    double result =0;
+				    //result =  new KendallsCorrelation().correlation(g_hubUsers,l_hubUsers);
+				    result = jaccardSimilarity(g_hubUsers,l_hubUsers);
+				    System.out.println("Platform:"+p+", Topic:"+k+", Results:"+result);
+				    bw.write(p+","+k+","+result+"\n");
 				}
 			}
 			bw.close();
+			
+			
+//			System.out.println("measuring user authority distribution distance");
+//			vector = new Vector();
+//			filename = String.format("%s/userAuthorityDistance.csv", outputPath);
+//			bw = new BufferedWriter(new FileWriter(filename));
+//			iter = userId2Index.entrySet().iterator();
+//			int l_topic_max = 0;
+//			int g_topic_max = 0;
+//			double l_authority_max = 0.0;
+//			double g_authority_max = 0.0;
+//			while (iter.hasNext()) {
+//				Map.Entry<String, Integer> pair = iter.next();
+//				int u = pair.getValue();
+//				l_authority_max = 0.0;
+//				g_authority_max = 0.0;
+//				for (int k = 0; k < nTopics; k++) {
+//					if (g_userAuthorityDistributions[u][k] > g_authority_max) {
+//						g_authority_max = g_userAuthorityDistributions[u][k];
+//						g_topic_max = k;
+//					}
+//				}
+//				for (int k = 0; k < nTopics; k++) {
+//					if (l_userAuthorityDistributions[u][k] > l_authority_max) {
+//						l_authority_max = l_userAuthorityDistributions[u][k];
+//						l_topic_max = k;
+//					}
+//				}
+//				if (g_topic_max == lgMatch[l_topic_max]) {
+//					bw.write(pair.getKey() + "," + 1 + "\n");
+//					// bw.write(String.format("%s,%f\n", pair.getKey(), 1));
+//				} else {
+//					bw.write(pair.getKey() + "," + 0 + "\n");
+//					// bw.write(String.format("%s,%f\n", pair.getKey(), 0));
+//				}
+//			}
+//			bw.close();
 
-			System.out.println("measuring user platform preferences distance");
-			vector = new Vector();
-			filename = String.format("%s/userPlatformDistance.csv", outputPath);
-			bw = new BufferedWriter(new FileWriter(filename));
-			iter = userId2Index.entrySet().iterator();
-			int l_platform_max[] = new int[nTopics];
-			int g_platform_max[] = new int[nTopics];
-			double l_preference_max = 0.0;
-			double g_preference_max = 0.0;
-			// l_topic_max = 0;
-			// g_topic_max = 0;
-			while (iter.hasNext()) {
-				Map.Entry<String, Integer> pair = iter.next();
-				int u = pair.getValue();
+//			System.out.println("measuring user authority distribution distance");
+//			vector = new Vector();
+//			filename = String.format("%s/userAuthorityDistance.csv", outputPath);
+//			bw = new BufferedWriter(new FileWriter(filename));
+//			iter = userId2Index.entrySet().iterator();
+//			int l_topic_max = 0;
+//			int g_topic_max = 0;
+//			double l_authority_max = 0.0;
+//			double g_authority_max = 0.0;
+//			while (iter.hasNext()) {
+//				Map.Entry<String, Integer> pair = iter.next();
+//				int u = pair.getValue();
+//				l_authority_max = 0.0;
+//				g_authority_max = 0.0;
+//				for (int k = 0; k < nTopics; k++) {
+//					if (g_userAuthorityDistributions[u][k] > g_authority_max) {
+//						g_authority_max = g_userAuthorityDistributions[u][k];
+//						g_topic_max = k;
+//					}
+//				}
+//				for (int k = 0; k < nTopics; k++) {
+//					if (l_userAuthorityDistributions[u][k] > l_authority_max) {
+//						l_authority_max = l_userAuthorityDistributions[u][k];
+//						l_topic_max = k;
+//					}
+//				}
+//				if (g_topic_max == lgMatch[l_topic_max]) {
+//					bw.write(pair.getKey() + "," + 1 + "\n");
+//					// bw.write(String.format("%s,%f\n", pair.getKey(), 1));
+//				} else {
+//					bw.write(pair.getKey() + "," + 0 + "\n");
+//					// bw.write(String.format("%s,%f\n", pair.getKey(), 0));
+//				}
+//			}
+//			bw.close();
 
-				// l_authority_max = 0.0;
-				// g_authority_max = 0.0;
-				for (int k = 0; k < nTopics; k++) {
-					l_preference_max = 0.0;
-					g_preference_max = 0.0;
-					for (int p = 0; p < nPlatforms; p++) {
-						if (g_userPlatformPreferenceDistributions[u][k][p] > g_preference_max) {
-							g_preference_max = g_userPlatformPreferenceDistributions[u][k][p];
-							g_platform_max[k] = p;
-						}
-						if (l_userPlatformPreferenceDistributions[u][k][p] > l_preference_max) {
-							l_preference_max = l_userPlatformPreferenceDistributions[u][k][p];
-							l_platform_max[k] = p;
-						}
-					}
-				}
+//			System.out.println("measuring user hub distribution distance");
+//			vector = new Vector();
+//			filename = String.format("%s/userHubDistance.csv", outputPath);
+//			bw = new BufferedWriter(new FileWriter(filename));
+//			iter = userId2Index.entrySet().iterator();
+//			l_topic_max = 0;
+//			g_topic_max = 0;
+//			while (iter.hasNext()) {
+//				Map.Entry<String, Integer> pair = iter.next();
+//				int u = pair.getValue();
+//				l_authority_max = 0.0;
+//				g_authority_max = 0.0;
+//				for (int k = 0; k < nTopics; k++) {
+//					if (g_userHubDistributions[u][k] > g_authority_max) {
+//						g_authority_max = g_userHubDistributions[u][k];
+//						g_topic_max = k;
+//					}
+//				}
+//				for (int k = 0; k < nTopics; k++) {
+//					if (l_userHubDistributions[u][k] > l_authority_max) {
+//						l_authority_max = l_userHubDistributions[u][k];
+//						l_topic_max = k;
+//					}
+//				}
+//				if (g_topic_max == lgMatch[l_topic_max]) {
+//					bw.write(pair.getKey() + "," + 1 + "\n");
+//					// bw.write(String.format("%s,%f\n", pair.getKey(), 1));
+//				} else {
+//					bw.write(pair.getKey() + "," + 0 + "\n");
+//					// bw.write(String.format("%s,%f\n", pair.getKey(), 0));
+//				}
+//			}
+//			bw.close();
+			
 
-				int nCorrect = 0;
-				for (int k = 0; k < nTopics; k++) {
-					if (g_platform_max[k] == l_platform_max[lgMatch[k]]) {
-						nCorrect++;
-					}
-				}
-				double result = (double) nCorrect / nTopics;
-				bw.write(pair.getKey() + "," + result + "\n");
-
-			}
-			bw.close();
+//			System.out.println("measuring user platform preferences distance");
+//			vector = new Vector();
+//			filename = String.format("%s/userPlatformDistance.csv", outputPath);
+//			bw = new BufferedWriter(new FileWriter(filename));
+//			iter = userId2Index.entrySet().iterator();
+//			int l_platform_max[] = new int[nTopics];
+//			int g_platform_max[] = new int[nTopics];
+//			double l_preference_max = 0.0;
+//			double g_preference_max = 0.0;
+//			// l_topic_max = 0;
+//			// g_topic_max = 0;
+//			while (iter.hasNext()) {
+//				Map.Entry<String, Integer> pair = iter.next();
+//				int u = pair.getValue();
+//
+//				// l_authority_max = 0.0;
+//				// g_authority_max = 0.0;
+//				for (int k = 0; k < nTopics; k++) {
+//					l_preference_max = 0.0;
+//					g_preference_max = 0.0;
+//					for (int p = 0; p < nPlatforms; p++) {
+//						if (g_userPlatformPreferenceDistributions[u][k][p] > g_preference_max) {
+//							g_preference_max = g_userPlatformPreferenceDistributions[u][k][p];
+//							g_platform_max[k] = p;
+//						}
+//						if (l_userPlatformPreferenceDistributions[u][k][p] > l_preference_max) {
+//							l_preference_max = l_userPlatformPreferenceDistributions[u][k][p];
+//							l_platform_max[k] = p;
+//						}
+//					}
+//				}
+//
+//				int nCorrect = 0;
+//				for (int k = 0; k < nTopics; k++) {
+//					if (g_platform_max[k] == l_platform_max[lgMatch[k]]) {
+//						nCorrect++;
+//					}
+//				}
+//				double result = (double) nCorrect / nTopics;
+//				bw.write(pair.getKey() + "," + result + "\n");
+//
+//			}
+//			bw.close();
 
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(-1);
 		}
 
+	}
+	
+	private static HashMap sortByValues(HashMap map) { 
+	       List list = new LinkedList(map.entrySet());
+	       // Defined Custom Comparator here
+	       Collections.sort(list, new Comparator() {
+	            public int compare(Object o1, Object o2) {
+	               return ((Comparable) ((Map.Entry) (o1)).getValue())
+	                  .compareTo(((Map.Entry) (o2)).getValue());
+	            }
+	       });
+
+	       // Here I am copying the sorted list in HashMap
+	       // using LinkedHashMap to preserve the insertion order
+	       HashMap sortedHashMap = new LinkedHashMap();
+	       for (Iterator it = list.iterator(); it.hasNext();) {
+	              Map.Entry entry = (Map.Entry) it.next();
+	              sortedHashMap.put(entry.getKey(), entry.getValue());
+	       } 
+	       return sortedHashMap;
+	  }
+	
+	private static double jaccardSimilarity(double[] a, double[] b) {
+
+	    Set<Double> s1 = new HashSet<Double>();
+	    for (int i = 0; i < a.length; i++) {
+	        s1.add(a[i]);
+	    }
+	    Set<Double> s2 = new HashSet<Double>();
+	    for (int i = 0; i < b.length; i++) {
+	        s2.add(b[i]);
+	    }
+
+	    final int sa = s1.size();
+	    final int sb = s2.size();
+	    s1.retainAll(s2);
+	    final int intersection = s1.size();
+	    return 1d / (sa + sb - intersection) * intersection;
 	}
 
 	public static void main(String[] args) {
@@ -492,10 +747,30 @@ public class CompareWithGroundTruth {
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/10", "euclidean",
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/evaluation");
 
+		//CompareWithGroundTruth comparator = new
+		//CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
+		//"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_1.0", "euclidean",
+		//"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
+		
+//		CompareWithGroundTruth comparator = new
+//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_1.0", "euclidean",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
+		
+//		CompareWithGroundTruth comparator = new
+//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/10/omega_35.0_phi_1.0", "euclidean",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/evaluation/mphat");
+		
 		CompareWithGroundTruth comparator = new
-		CompareWithGroundTruth("E:/users/roylee.2013/MP-HAT/mp-hat/syn_data",
-		"E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/10", "euclidean",
-		"E:/users/roylee.2013/MP-HAT/mp-hat/syn_data/evaluation");
+				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/HAT_10", "euclidean",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/hat");
+		
+//		CompareWithGroundTruth comparator = new
+//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/HAT_10", "euclidean",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/evaluation/hat");		
 
 		//CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/syn_data",
 		//		"E:/code/java/MP-HAT/mp-hat/syn_data/10", "euclidean",
