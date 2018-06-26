@@ -55,9 +55,9 @@ public class MultiThreadMPHAT {
 	public static double epsilon = 0.000001;
 	public static double lamda = 0.01;
 	public static double omega = 35; // regularization for hub
-	public static double phi = 1; // regularization for authority
+	public static double phi = 35; // regularization for authority
 
-	public static Random rand;
+	public static Random rand = new Random(1);;
 
 	// Gibbs sampling variables
 	// user-topic counts
@@ -99,7 +99,7 @@ public class MultiThreadMPHAT {
 
 	public static int max_GibbsEM_Iterations = 200;
 
-	public static int nParallelThreads = 10;
+	public static int nParallelThreads = 20;
 	public static int[] threadStartIndexes = null;
 	public static int[] threadEndIndexes = null;
 
@@ -2818,7 +2818,7 @@ public class MultiThreadMPHAT {
 			System.out.println();
 		}
 		// print out the learned parameters
-		// output_topicWord();
+		output_topicWord();
 		output_topicInterest();
 		output_platformPreference();
 		output_authority();
@@ -3061,13 +3061,16 @@ public class MultiThreadMPHAT {
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/";
 		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance";
 		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance";
-		String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance_2";
+		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance_2";
+		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance_2/mp_subset";
 		// String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance/instagram";
 		// String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/hat_data/instagram";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/data/combined";
 		// String datasetPath = "E:/users/roylee.2013/MP-HAT/mp-hat/syn_data";
 		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/combined";
-		int nTopics = 12;
+		String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed";
+		//String datasetPath = "F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform";
+		int nTopics = 10;
 		int batch = 1;
 		MultiThreadMPHAT model = new MultiThreadMPHAT(datasetPath, nTopics, batch, datasetPath);
 		
@@ -3092,7 +3095,11 @@ public class MultiThreadMPHAT {
 		// model.altCheck_Authority(u);
 		// model.altCheck_Hub(u);
 		// model.altCheck_PlatformPreference(u, k);
+		long startTime = System.currentTimeMillis();
 		model.train();
+		long estimatedTime = System.currentTimeMillis() - startTime;
+		System.out.println(nParallelThreads+","+estimatedTime);
+		
 		// model.gradCheck_Authority(u, k);
 		// model.gradCheck_Hub(u, k);
 		// model.gradCheck_TopicalInterest(u, k);

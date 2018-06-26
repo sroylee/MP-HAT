@@ -27,6 +27,8 @@ public class CompareWithGroundTruth {
 	private boolean userAuthority = true;
 	private boolean userHub = true;
 	private boolean userPlatformPreference = false;
+	
+	private int jcParameter =5;
 
 	private String groundtruthPath;
 	private String learntPath;
@@ -435,8 +437,8 @@ public class CompareWithGroundTruth {
 
 			// System.exit(-1);
 			
-			System.out.println("measuring user authority Kendalls Correlation");
-			filename = String.format("%s/userAuthorityKendallsCorrelation.csv", outputPath);
+			System.out.println("measuring user authority Jaccard Coefficient");
+			filename = String.format("%s/userAuthorityJaccardCoefficient.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
 			HashMap<Integer, Double> g_userAuhority;
 			HashMap<Integer, Double> l_userAuhority;
@@ -444,8 +446,8 @@ public class CompareWithGroundTruth {
 			HashMap<Integer, Double> sorted_l_userAuhority;
 			//double[] g_authorityUsers = new double[nUsers];
 			//double[] l_authorityUsers = new double[nUsers];
-			double[] g_authorityUsers = new double[10];
-			double[] l_authorityUsers = new double[10];
+			double[] g_authorityUsers = new double[jcParameter];
+			double[] l_authorityUsers = new double[jcParameter];
 			double kendall = 0;
 			for (int p=0;p<nPlatforms;p++){
 				for (int k = 0; k < nTopics; k++) {
@@ -464,7 +466,7 @@ public class CompareWithGroundTruth {
 					Set set1 = sorted_g_userAuhority.entrySet();
 				    Iterator iterator1 = set1.iterator();
 				    int i = 0;
-				    while(iterator1.hasNext() && i<10) {
+				    while(iterator1.hasNext() && i<jcParameter) {
 				    	Map.Entry me1 = (Map.Entry)iterator1.next();
 				    	g_authorityUsers[i] = (int) me1.getKey();
 				    	i++;
@@ -475,7 +477,7 @@ public class CompareWithGroundTruth {
 					Set set2 = sorted_l_userAuhority.entrySet();
 				    Iterator iterator2 = set2.iterator();
 				    i = 0;
-				    while(iterator2.hasNext() && i<10) {
+				    while(iterator2.hasNext() && i<jcParameter) {
 				    	Map.Entry me2 = (Map.Entry)iterator2.next();
 				    	l_authorityUsers[i] = (int) me2.getKey();
 				    	i++;	
@@ -490,8 +492,8 @@ public class CompareWithGroundTruth {
 			}
 			bw.close();
 			
-			System.out.println("measuring user hub Kendalls Correlation");
-			filename = String.format("%s/userHubKendallsCorrelation.csv", outputPath);
+			System.out.println("measuring user hub Jaccard Coefficient");
+			filename = String.format("%s/userHubJaccardCoefficient.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
 			HashMap<Integer, Double> g_userHub;
 			HashMap<Integer, Double> l_userHub;
@@ -499,8 +501,8 @@ public class CompareWithGroundTruth {
 			HashMap<Integer, Double> sorted_l_userHub;
 			//double[] g_hubUsers = new double[nUsers];
 			//double[] l_hubUsers = new double[nUsers];
-			double[] g_hubUsers = new double[10];
-			double[] l_hubUsers = new double[10];
+			double[] g_hubUsers = new double[jcParameter];
+			double[] l_hubUsers = new double[jcParameter];
 			kendall = 0;
 			for (int p=0;p<nPlatforms;p++){
 				for (int k = 0; k < nTopics; k++) {
@@ -519,7 +521,7 @@ public class CompareWithGroundTruth {
 					Set set1 = sorted_g_userHub.entrySet();
 				    Iterator iterator1 = set1.iterator();
 				    int i = 0;
-				    while(iterator1.hasNext() && i<10) {
+				    while(iterator1.hasNext() && i<jcParameter) {
 				    	Map.Entry me1 = (Map.Entry)iterator1.next();
 				    	g_hubUsers[i] = (int) me1.getKey();
 				    	i++;
@@ -529,7 +531,7 @@ public class CompareWithGroundTruth {
 					Set set2 = sorted_l_userHub.entrySet();
 				    Iterator iterator2 = set2.iterator();
 				    i = 0;
-				    while(iterator2.hasNext() && i<10) {
+				    while(iterator2.hasNext() && i<jcParameter) {
 				    	Map.Entry me2 = (Map.Entry)iterator2.next();
 				    	l_hubUsers[i] = (int) me2.getKey();
 				    	i++;
@@ -752,20 +754,20 @@ public class CompareWithGroundTruth {
 		//"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_1.0", "euclidean",
 		//"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
 		
-//		CompareWithGroundTruth comparator = new
-//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
-//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_1.0", "euclidean",
-//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
+		CompareWithGroundTruth comparator = new
+				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_35.0", "euclidean",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
 		
 //		CompareWithGroundTruth comparator = new
 //				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
 //				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/10/omega_35.0_phi_1.0", "euclidean",
 //				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/evaluation/mphat");
 		
-		CompareWithGroundTruth comparator = new
-				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
-				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/HAT_10", "euclidean",
-				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/hat");
+//		CompareWithGroundTruth comparator = new
+//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/HAT_10", "euclidean",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/hat");
 		
 //		CompareWithGroundTruth comparator = new
 //				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
