@@ -26,9 +26,9 @@ public class CompareWithGroundTruth {
 	private boolean userInterest = true;
 	private boolean userAuthority = true;
 	private boolean userHub = true;
-	private boolean userPlatformPreference = false;
+	private boolean userPlatformPreference = true;
 	
-	private int jcParameter =5;
+	private int jcParameter =10;
 
 	private String groundtruthPath;
 	private String learntPath;

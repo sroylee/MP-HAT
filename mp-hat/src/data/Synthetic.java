@@ -66,10 +66,12 @@ public class Synthetic {
 											// summing
 											// up to 99%
 	private double singlePlatformProp = 0.0;
-	private double platformPreferenceUniformity = 0.9;
+	private double platformPreferenceUniformity = 0.01;
 
 	private double proportionHubUsers = 0.1;
 	private double proportionAuthoritativeUsers = 0.1;
+	
+	private double scaleUpConstant = 100;
 
 	private int minNPosts = 100;
 	private int maxNPosts = 200;
@@ -274,13 +276,33 @@ public class Synthetic {
 				// omega);
 				// authorities[u][z] = gammaDistribution.sample();
 
+//				authorities[u][z] = Math.pow(userLatentFactors[u][z]+1, 2);
+//				if (authorities[u][z] < epsilon) {
+//					authorities[u][z] = epsilon;
+//				}
+				
+//				if (authoritativeUsers.contains(u)) {
+//					//authorities[u][z] = userLatentFactors[u][z];
+//					authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
+//					if (authorities[u][z] < epsilon) {
+//						authorities[u][z] = epsilon;
+//					}
+//				} else {
+//					//authorities[u][z] = rand.nextDouble();
+//					authorities[u][z] = userLatentFactors[u][z] * scaleUpConstant;
+//				}
+				
 				if (authoritativeUsers.contains(u)) {
-					authorities[u][z] = userLatentFactors[u][z];
+					authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
 					if (authorities[u][z] < epsilon) {
 						authorities[u][z] = epsilon;
 					}
 				} else {
-					authorities[u][z] = rand.nextDouble();
+					//authorities[u][z] = rand.nextDouble();
+					authorities[u][z] = userLatentFactors[u][z]/5;
+					if (authorities[u][z] < epsilon) {
+						authorities[u][z] = epsilon;
+					}
 				}
 			}
 		}
@@ -320,13 +342,31 @@ public class Synthetic {
 				// omega);
 				// hubs[u][z] = gammaDistribution.sample();
 
+//				hubs[u][z] = Math.pow(userLatentFactors[u][z]+1,2);
+//				if (hubs[u][z] < epsilon) {
+//					hubs[u][z] = epsilon;
+//				}
+				
+//				if (hubUsers.contains(u)) {
+//					//hubs[u][z] = userLatentFactors[u][z];
+//					hubs[u][z] = Math.pow(userLatentFactors[u][z],2);
+//					if (hubs[u][z] < epsilon) {
+//						hubs[u][z] = epsilon;
+//					}
+//				} else {
+//					//hubs[u][z] = rand.nextDouble();
+//					hubs[u][z] = userLatentFactors[u][z];
+//				}
 				if (hubUsers.contains(u)) {
-					hubs[u][z] = userLatentFactors[u][z];
+					hubs[u][z] = Math.pow(userLatentFactors[u][z],2);
 					if (hubs[u][z] < epsilon) {
 						hubs[u][z] = epsilon;
 					}
 				} else {
-					hubs[u][z] = rand.nextDouble();
+					hubs[u][z] = userLatentFactors[u][z]/5;
+					if (hubs[u][z] < epsilon) {
+						hubs[u][z] = epsilon;
+					}
 				}
 			}
 		}
@@ -607,7 +647,9 @@ public class Synthetic {
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		// generator.testTuple();
-		generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
+		//generator.genData(100, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
+		//generator.genData(100, 2, 10, 10000, "F:/Users/roylee/MP-HAT/mp-hat/syn_data/uniform");
+		generator.genData(100, 2, 10, 10000, "F:/Users/roylee/MP-HAT/mp-hat/syn_data/skewed");
 		// generator.genData(100, 2, 10, 10000,
 		// "F:/users/roylee/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
