@@ -319,7 +319,7 @@ public class Synthetic {
 					// authorities[u][z] = epsilon;
 					// }
 				} else {
-					authorities[u][z] = 0.1;
+					authorities[u][z] = 0.001;
 					// authorities[u][z] = rand.nextDouble();
 					// authorities[u][z] = userLatentFactors[u][z] / 5;
 					// if (authorities[u][z] < epsilon) {
@@ -390,7 +390,7 @@ public class Synthetic {
 					// hubs[u][z] = epsilon;
 					// }
 				} else {
-					hubs[u][z] = 0.1;
+					hubs[u][z] = 0.001;
 					// hubs[u][z] = userLatentFactors[u][z] / 5;
 					// if (hubs[u][z] < epsilon) {
 					// hubs[u][z] = epsilon;
