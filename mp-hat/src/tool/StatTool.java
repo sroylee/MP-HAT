@@ -1,5 +1,6 @@
 package tool;
 
+import java.util.HashSet;
 import java.util.Random;
 import org.apache.commons.math3.distribution.*;
 
@@ -208,6 +209,28 @@ public class StatTool {
 			}
 		}
 		return instance;
+	}
+
+	public double[] sampleTwoClassUniformDistribution(int dim, double focusProportion, double massProportion,
+			Random rand) {
+		int nHighers = (int) (dim * focusProportion);
+		HashSet<Integer> highers = new HashSet<Integer>();
+		while (highers.size() < nHighers) {
+			int z = rand.nextInt(dim);
+			while (highers.contains(z)) {
+				z = rand.nextInt(dim);
+			}
+			highers.add(z);
+		}
+		double[] distribution = new double[dim];
+		for (int z = 0; z < dim; z++) {
+			if (highers.contains(z)) {
+				distribution[z] = massProportion / nHighers;
+			} else {
+				distribution[z] = (1 - massProportion) / (dim - nHighers);
+			}
+		}
+		return distribution;
 	}
 
 	public double[] sampleNearUniform(int dim, double uniformity, Random rand) {

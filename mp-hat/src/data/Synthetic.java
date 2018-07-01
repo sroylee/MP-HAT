@@ -69,8 +69,8 @@ public class Synthetic {
 	private double platformPreferenceUniformity = 0.01;
 
 	private double proportionHubUsers = 0.1;
-	private double proportionAuthoritativeUsers = 0.1;
-	
+	private double proportionAuthoritativeUsers = 0.01;
+
 	private double scaleUpConstant = 100;
 
 	private int minNPosts = 100;
@@ -93,6 +93,8 @@ public class Synthetic {
 
 	private double lambda = 1;
 
+	HashMap<Integer, List<Integer>> interestedUsers;
+
 	private int[] nTopicCounts;
 
 	private ModelMode mode;
@@ -112,12 +114,26 @@ public class Synthetic {
 
 	private double[][] genUserLatentFactors(int nUsers, int nTopics) {
 		double[][] userLatentFactor = new double[nUsers][];
+		interestedUsers = new HashMap<Integer, List<Integer>>();
+		double avg = 1d / nTopics;
 		for (int u = 0; u < nUsers; u++) {
-			userLatentFactor[u] = statTool.sampleDirichletSkew(alpha, nTopics, userSkewness, mass, rand);
+			// userLatentFactor[u] = statTool.sampleDirichletSkew(alpha,
+			// nTopics, userSkewness, mass, rand);
+			userLatentFactor[u] = statTool.sampleTwoClassUniformDistribution(nTopics, userSkewness, mass, rand);
 			double min = Double.POSITIVE_INFINITY;
 			for (int z = 0; z < nTopics; z++) {
 				if (min > userLatentFactor[u][z]) {
 					min = userLatentFactor[u][z];
+				}
+
+				if (userLatentFactor[u][z] > avg) {
+					if (interestedUsers.containsKey(z)) {
+						interestedUsers.get(z).add(u);
+					} else {
+						List<Integer> userSet = new ArrayList<Integer>();
+						userSet.add(u);
+						interestedUsers.put(z, userSet);
+					}
 				}
 			}
 
@@ -244,15 +260,18 @@ public class Synthetic {
 	private double[][] genUserAuthority(int nUsers, int nTopics, double[][] userLatentFactors) {
 		double[][] authorities = new double[nUsers][nTopics];
 
-		HashSet<Integer> authoritativeUsers = new HashSet<Integer>();
-		while (authoritativeUsers.size() < proportionAuthoritativeUsers * nUsers) {
-			int u = rand.nextInt(nUsers);
-			while (authoritativeUsers.contains(u)) {
-				u = rand.nextInt(nUsers);
+		HashMap<Integer, HashSet<Integer>> authoritativeUsers = new HashMap<Integer, HashSet<Integer>>();
+		for (int z = 0; z < nTopics; z++) {
+			List<Integer> possibleUsers = interestedUsers.get(z);
+			HashSet<Integer> userSet = new HashSet<Integer>();
+			while (userSet.size() < proportionAuthoritativeUsers * nUsers) {
+				int u = possibleUsers.get(rand.nextInt(possibleUsers.size()));
+				if (!userSet.contains(u)) {
+					userSet.add(u);
+				}
 			}
-			authoritativeUsers.add(u);
+			authoritativeUsers.put(z, userSet);
 		}
-
 		for (int u = 0; u < nUsers; u++) {
 			for (int z = 0; z < nTopics; z++) {
 				// GammaDistribution gammaDistribution = new
@@ -276,33 +295,36 @@ public class Synthetic {
 				// omega);
 				// authorities[u][z] = gammaDistribution.sample();
 
-//				authorities[u][z] = Math.pow(userLatentFactors[u][z]+1, 2);
-//				if (authorities[u][z] < epsilon) {
-//					authorities[u][z] = epsilon;
-//				}
-				
-//				if (authoritativeUsers.contains(u)) {
-//					//authorities[u][z] = userLatentFactors[u][z];
-//					authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
-//					if (authorities[u][z] < epsilon) {
-//						authorities[u][z] = epsilon;
-//					}
-//				} else {
-//					//authorities[u][z] = rand.nextDouble();
-//					authorities[u][z] = userLatentFactors[u][z] * scaleUpConstant;
-//				}
-				
-				if (authoritativeUsers.contains(u)) {
-					authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
-					if (authorities[u][z] < epsilon) {
-						authorities[u][z] = epsilon;
-					}
+				// authorities[u][z] = Math.pow(userLatentFactors[u][z]+1, 2);
+				// if (authorities[u][z] < epsilon) {
+				// authorities[u][z] = epsilon;
+				// }
+
+				// if (authoritativeUsers.contains(u)) {
+				// //authorities[u][z] = userLatentFactors[u][z];
+				// authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
+				// if (authorities[u][z] < epsilon) {
+				// authorities[u][z] = epsilon;
+				// }
+				// } else {
+				// //authorities[u][z] = rand.nextDouble();
+				// authorities[u][z] = userLatentFactors[u][z] *
+				// scaleUpConstant;
+				// }
+
+				if (authoritativeUsers.get(z).contains(u)) {
+					// authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
+					authorities[u][z] = userLatentFactors[u][z];
+					// if (authorities[u][z] < epsilon) {
+					// authorities[u][z] = epsilon;
+					// }
 				} else {
-					//authorities[u][z] = rand.nextDouble();
-					authorities[u][z] = userLatentFactors[u][z]/5;
-					if (authorities[u][z] < epsilon) {
-						authorities[u][z] = epsilon;
-					}
+					authorities[u][z] = 0.1;
+					// authorities[u][z] = rand.nextDouble();
+					// authorities[u][z] = userLatentFactors[u][z] / 5;
+					// if (authorities[u][z] < epsilon) {
+					// authorities[u][z] = epsilon;
+					// }
 				}
 			}
 		}
@@ -312,13 +334,17 @@ public class Synthetic {
 	private double[][] genUserHub(int nUsers, int nTopics, double[][] userLatentFactors) {
 		double[][] hubs = new double[nUsers][nTopics];
 
-		HashSet<Integer> hubUsers = new HashSet<Integer>();
-		while (hubUsers.size() < proportionHubUsers * nUsers) {
-			int u = rand.nextInt(nUsers);
-			while (hubUsers.contains(u)) {
-				u = rand.nextInt(nUsers);
+		HashMap<Integer, HashSet<Integer>> hubUsers = new HashMap<Integer, HashSet<Integer>>();
+		for (int z = 0; z < nTopics; z++) {
+			List<Integer> possibleUsers = interestedUsers.get(z);
+			HashSet<Integer> userSet = new HashSet<Integer>();
+			while (userSet.size() < proportionAuthoritativeUsers * nUsers) {
+				int u = possibleUsers.get(rand.nextInt(possibleUsers.size()));
+				if (!userSet.contains(u)) {
+					userSet.add(u);
+				}
 			}
-			hubUsers.add(u);
+			hubUsers.put(z, userSet);
 		}
 
 		for (int u = 0; u < nUsers; u++) {
@@ -342,31 +368,33 @@ public class Synthetic {
 				// omega);
 				// hubs[u][z] = gammaDistribution.sample();
 
-//				hubs[u][z] = Math.pow(userLatentFactors[u][z]+1,2);
-//				if (hubs[u][z] < epsilon) {
-//					hubs[u][z] = epsilon;
-//				}
-				
-//				if (hubUsers.contains(u)) {
-//					//hubs[u][z] = userLatentFactors[u][z];
-//					hubs[u][z] = Math.pow(userLatentFactors[u][z],2);
-//					if (hubs[u][z] < epsilon) {
-//						hubs[u][z] = epsilon;
-//					}
-//				} else {
-//					//hubs[u][z] = rand.nextDouble();
-//					hubs[u][z] = userLatentFactors[u][z];
-//				}
-				if (hubUsers.contains(u)) {
-					hubs[u][z] = Math.pow(userLatentFactors[u][z],2);
-					if (hubs[u][z] < epsilon) {
-						hubs[u][z] = epsilon;
-					}
+				// hubs[u][z] = Math.pow(userLatentFactors[u][z]+1,2);
+				// if (hubs[u][z] < epsilon) {
+				// hubs[u][z] = epsilon;
+				// }
+
+				// if (hubUsers.contains(u)) {
+				// //hubs[u][z] = userLatentFactors[u][z];
+				// hubs[u][z] = Math.pow(userLatentFactors[u][z],2);
+				// if (hubs[u][z] < epsilon) {
+				// hubs[u][z] = epsilon;
+				// }
+				// } else {
+				// //hubs[u][z] = rand.nextDouble();
+				// hubs[u][z] = userLatentFactors[u][z];
+				// }
+				if (hubUsers.get(z).contains(u)) {
+					hubs[u][z] = userLatentFactors[u][z];
+					// hubs[u][z] = Math.pow(userLatentFactors[u][z], 2);
+					// if (hubs[u][z] < epsilon) {
+					// hubs[u][z] = epsilon;
+					// }
 				} else {
-					hubs[u][z] = userLatentFactors[u][z]/5;
-					if (hubs[u][z] < epsilon) {
-						hubs[u][z] = epsilon;
-					}
+					hubs[u][z] = 0.1;
+					// hubs[u][z] = userLatentFactors[u][z] / 5;
+					// if (hubs[u][z] < epsilon) {
+					// hubs[u][z] = epsilon;
+					// }
 				}
 			}
 		}
@@ -379,8 +407,9 @@ public class Synthetic {
 		for (int z = 0; z < nTopics; z++) {
 			prod += userHub[z] * uPlatformPreference[z][platform] * userAuthority[z] * vPlatformPreference[z][platform];
 		}
-		prod = MathTool.normalizationFunction(prod * lambda);
-		return prod;
+		// prod = MathTool.normalizationFunction(prod * lambda);
+		prod = MathTool.sigmoid(prod * lambda);
+		return 2 * (prod - 0.5);
 	}
 
 	private HashMap<Integer, HashMap<Integer, HashSet<Integer>>> genNetwork(int nUsers, int nTopics, int nPlatforms,
@@ -409,10 +438,12 @@ public class Synthetic {
 					}
 					double prod = getLinkLikelihood(nTopics, userAuthorities[v], userRelativePlatformPreference[v],
 							userHubs[u], userRelativePlatformPreference[u], p);
-					tuples.add(new Tuple(v, prod));
+					if (rand.nextDouble() < prod) {
+						tuples.add(new Tuple(v, prod));
+					}
 				}
 				Collections.sort(tuples);
-				for (int i = 0; i < tuples.size() * 0.2; i++) {
+				for (int i = 0; i < tuples.size(); i++) {
 					upFollowings.add(tuples.get(tuples.size() - i - 1).getIntKey());
 				}
 				uFollowings.put(p, upFollowings);
@@ -615,17 +646,27 @@ public class Synthetic {
 
 	public void genData(int nUsers, int nPlatforms, int nTopics, int nWords, String outputPath) {
 		double[][] topics = genTopics(nTopics, nWords);
+		System.out.println("generating latent factors");
 		double[][] userLatentFactors = genUserLatentFactors(nUsers, nTopics);
+		System.out.println("generating user active platforms");
 		int[][] userActivePlatforms = genUserActivePlatforms(nUsers, nPlatforms, singlePlatformProp);
+		System.out.println("generating platform preference");
 		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms,
 				userActivePlatforms);
+		System.out.println("generating authority");
 		double[][] userAuthorities = genUserAuthority(nUsers, nTopics, userLatentFactors);
+		System.out.println("generating hub");
 		double[][] userHubs = genUserHub(nUsers, nTopics, userLatentFactors);
+		System.out.println("saving users' info");
 		saveUsers(nUsers, userActivePlatforms, outputPath);
+		System.out.println("saving words");
 		saveWords(nWords, outputPath);
+		System.out.println("generating & saving tweets");
 		genAndsaveTweet(outputPath, nUsers, nTopics, userLatentFactors, userPlatformPreference, topics);
+		System.out.println("generating & saving links");
 		genAndsaveNetwork(outputPath, nUsers, nPlatforms, nTopics, userAuthorities, userHubs, userPlatformPreference,
 				userActivePlatforms);
+		System.out.println("saving users' scores");
 		saveGroundTruth(topics, userLatentFactors, userAuthorities, userHubs, userPlatformPreference, outputPath);
 	}
 
@@ -647,9 +688,11 @@ public class Synthetic {
 	public static void main(String[] args) {
 		Synthetic generator = new Synthetic(ModelMode.TWITTER_LDA);
 		// generator.testTuple();
-		//generator.genData(100, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
-		//generator.genData(100, 2, 10, 10000, "F:/Users/roylee/MP-HAT/mp-hat/syn_data/uniform");
-		generator.genData(100, 2, 10, 10000, "F:/Users/roylee/MP-HAT/mp-hat/syn_data/skewed");
+		generator.genData(1000, 2, 10, 10000, "E:/code/java/MP-HAT/mp-hat/syn_data");
+		// generator.genData(1000, 2, 10, 10000,
+		// "F:/Users/roylee/MP-HAT/mp-hat/syn_data/uniform");
+		// generator.genData(100, 2, 10, 10000,
+		// "F:/Users/roylee/MP-HAT/mp-hat/syn_data/skewed");
 		// generator.genData(100, 2, 10, 10000,
 		// "F:/users/roylee/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
