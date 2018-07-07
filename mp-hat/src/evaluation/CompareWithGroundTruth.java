@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -440,12 +442,10 @@ public class CompareWithGroundTruth {
 			System.out.println("measuring user authority Jaccard Coefficient");
 			filename = String.format("%s/userAuthorityJaccardCoefficient.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
-			HashMap<Integer, Double> g_userAuhority;
-			HashMap<Integer, Double> l_userAuhority;
-			HashMap<Integer, Double> sorted_g_userAuhority;
-			HashMap<Integer, Double> sorted_l_userAuhority;
-			//double[] g_authorityUsers = new double[nUsers];
-			//double[] l_authorityUsers = new double[nUsers];
+			Map<Integer, Double> g_userAuhority;
+			Map<Integer, Double> l_userAuhority;
+			List<Entry<Integer, Double>> sorted_g_userAuhority;
+			List<Entry<Integer, Double>> sorted_l_userAuhority;
 			double[] g_authorityUsers = new double[jcParameter];
 			double[] l_authorityUsers = new double[jcParameter];
 			double kendall = 0;
@@ -455,36 +455,24 @@ public class CompareWithGroundTruth {
 					g_userAuhority = new HashMap<Integer, Double>();
 					l_userAuhority = new HashMap<Integer, Double>();
 					for (int u=0; u<nUsers;u++){
-						g_userAuhority.put(u, g_platformTopicalAuthorities[p][k][u]);
-						l_userAuhority.put(u, l_platformTopicalAuthorities[p][glMatch[k]][u]);	
+//						g_userAuhority.put(u, g_platformTopicalAuthorities[p][k][u]);
+//						l_userAuhority.put(u, l_platformTopicalAuthorities[p][glMatch[k]][u]);
+						g_userAuhority.put(u, g_userAuthorityDistributions[u][k]);
+						l_userAuhority.put(u, l_userAuthorityDistributions[u][glMatch[k]]);
 					}
 					//Sort the two hashmaps by value
-					sorted_g_userAuhority = sortByValues(g_userAuhority);
-					sorted_l_userAuhority = sortByValues(l_userAuhority);
-					
-					//update the g_authorityUsers array
-					Set set1 = sorted_g_userAuhority.entrySet();
-				    Iterator iterator1 = set1.iterator();
-				    int i = 0;
-				    while(iterator1.hasNext() && i<jcParameter) {
-				    	Map.Entry me1 = (Map.Entry)iterator1.next();
-				    	g_authorityUsers[i] = (int) me1.getKey();
-				    	i++;
-				    	
-				    }
-				    
-				    //update the l_authorityUsers array
-					Set set2 = sorted_l_userAuhority.entrySet();
-				    Iterator iterator2 = set2.iterator();
-				    i = 0;
-				    while(iterator2.hasNext() && i<jcParameter) {
-				    	Map.Entry me2 = (Map.Entry)iterator2.next();
-				    	l_authorityUsers[i] = (int) me2.getKey();
-				    	i++;	
-				    }
+					sorted_g_userAuhority =  entriesSortedByValues(g_userAuhority);
+					sorted_l_userAuhority =  entriesSortedByValues(l_userAuhority);
+										
+					for (int i=0; i < jcParameter;i++){
+						Entry<Integer, Double> g_element = sorted_g_userAuhority.get(i);
+						g_authorityUsers[i] = g_element.getKey();
+						Entry<Integer, Double> l_element = sorted_l_userAuhority.get(i);
+						l_authorityUsers[i] = l_element.getKey();
+						System.out.println(g_authorityUsers[i]+","+l_authorityUsers[i]);
+					}
 				    
 				    double result =0;
-				    //result =  new KendallsCorrelation().correlation(g_authorityUsers,l_authorityUsers);
 				    result = jaccardSimilarity(g_authorityUsers,l_authorityUsers);
 				    System.out.println("Platform:"+p+", Topic:"+k+", Results:"+result);
 				    bw.write(p+","+k+","+result+"\n");  
@@ -495,15 +483,12 @@ public class CompareWithGroundTruth {
 			System.out.println("measuring user hub Jaccard Coefficient");
 			filename = String.format("%s/userHubJaccardCoefficient.csv", outputPath);
 			bw = new BufferedWriter(new FileWriter(filename));
-			HashMap<Integer, Double> g_userHub;
-			HashMap<Integer, Double> l_userHub;
-			HashMap<Integer, Double> sorted_g_userHub;
-			HashMap<Integer, Double> sorted_l_userHub;
-			//double[] g_hubUsers = new double[nUsers];
-			//double[] l_hubUsers = new double[nUsers];
+			Map<Integer, Double> g_userHub;
+			Map<Integer, Double> l_userHub;
+			List<Entry<Integer, Double>> sorted_g_userHub;
+			List<Entry<Integer, Double>> sorted_l_userHub;
 			double[] g_hubUsers = new double[jcParameter];
 			double[] l_hubUsers = new double[jcParameter];
-			kendall = 0;
 			for (int p=0;p<nPlatforms;p++){
 				for (int k = 0; k < nTopics; k++) {
 					//Update the hashmap of authority users for a given topic k
@@ -514,31 +499,17 @@ public class CompareWithGroundTruth {
 						l_userHub.put(u, l_platformTopicalHubs[p][glMatch[k]][u]);	
 					}
 					//Sort the two hashmaps by value
-					sorted_g_userHub = sortByValues(g_userHub);
-					sorted_l_userHub = sortByValues(l_userHub);
-					
-					//update the g_hubUsers array
-					Set set1 = sorted_g_userHub.entrySet();
-				    Iterator iterator1 = set1.iterator();
-				    int i = 0;
-				    while(iterator1.hasNext() && i<jcParameter) {
-				    	Map.Entry me1 = (Map.Entry)iterator1.next();
-				    	g_hubUsers[i] = (int) me1.getKey();
-				    	i++;
-				    }
+					sorted_g_userHub =  entriesSortedByValues(g_userHub);
+					sorted_l_userHub =  entriesSortedByValues(l_userHub);
 				    
-				    //update the l_hubUsers array
-					Set set2 = sorted_l_userHub.entrySet();
-				    Iterator iterator2 = set2.iterator();
-				    i = 0;
-				    while(iterator2.hasNext() && i<jcParameter) {
-				    	Map.Entry me2 = (Map.Entry)iterator2.next();
-				    	l_hubUsers[i] = (int) me2.getKey();
-				    	i++;
-				    }
+				    for (int i=0; i < jcParameter;i++){
+						Entry<Integer, Double> g_element = sorted_g_userHub.get(i);
+						g_hubUsers[i] = g_element.getKey();
+						Entry<Integer, Double> l_element = sorted_l_userHub.get(i);
+						l_hubUsers[i] = l_element.getKey();
+					}
 				    
 				    double result =0;
-				    //result =  new KendallsCorrelation().correlation(g_hubUsers,l_hubUsers);
 				    result = jaccardSimilarity(g_hubUsers,l_hubUsers);
 				    System.out.println("Platform:"+p+", Topic:"+k+", Results:"+result);
 				    bw.write(p+","+k+","+result+"\n");
@@ -705,25 +676,20 @@ public class CompareWithGroundTruth {
 
 	}
 	
-	private static HashMap sortByValues(HashMap map) { 
-	       List list = new LinkedList(map.entrySet());
-	       // Defined Custom Comparator here
-	       Collections.sort(list, new Comparator() {
-	            public int compare(Object o1, Object o2) {
-	               return ((Comparable) ((Map.Entry) (o1)).getValue())
-	                  .compareTo(((Map.Entry) (o2)).getValue());
-	            }
-	       });
+	private static <K, V extends Comparable<? super V>> List<Entry<Integer, Double>> entriesSortedByValues(Map<Integer, Double> l_userAuhority) {
 
-	       // Here I am copying the sorted list in HashMap
-	       // using LinkedHashMap to preserve the insertion order
-	       HashMap sortedHashMap = new LinkedHashMap();
-	       for (Iterator it = list.iterator(); it.hasNext();) {
-	              Map.Entry entry = (Map.Entry) it.next();
-	              sortedHashMap.put(entry.getKey(), entry.getValue());
-	       } 
-	       return sortedHashMap;
-	  }
+	    List<Entry<Integer, Double>> sortedEntries = new ArrayList<Entry<Integer, Double>>(l_userAuhority.entrySet());
+
+	    Collections.sort(sortedEntries, new Comparator<Entry<Integer, Double>>() {
+	        @Override
+	        public int compare(Entry<Integer, Double> e1, Entry<Integer, Double> e2) {
+	            return e2.getValue().compareTo(e1.getValue());
+	        }
+	    });
+
+	    return sortedEntries;
+	}
+	
 	
 	private static double jaccardSimilarity(double[] a, double[] b) {
 
@@ -756,7 +722,7 @@ public class CompareWithGroundTruth {
 		
 		CompareWithGroundTruth comparator = new
 				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
-				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_35.0", "euclidean",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_1.0_phi_1.0", "euclidean",
 				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
 		
 //		CompareWithGroundTruth comparator = new
