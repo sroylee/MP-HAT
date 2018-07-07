@@ -228,6 +228,25 @@ public class Synthetic {
 		return userPlatformPreference;
 	}
 
+	private int[][] getUserMostActivePlatform(int nUsers, int nTopics, int nPlatforms,
+			double[][][] userPlatformPreference) {
+		int[][] userMostActivePlatforms = new int[nUsers][nTopics];
+		for (int u = 0; u < nUsers; u++) {
+			for (int z = 0; z < nTopics; z++) {
+				double max = Double.NEGATIVE_INFINITY;
+				for (int p = 0; p < nPlatforms; p++) {
+					if (userPlatformPreference[u][z][p] > max) {
+						max = userPlatformPreference[u][z][p];
+						userMostActivePlatforms[u][z] = p;
+					}
+				}
+			}
+		}
+
+		return userMostActivePlatforms;
+
+	}
+
 	private Post genPost(double[] userInterest, double[][] platformPreference, double[][] topics) {
 		// #words in the post
 		int nTweetWords = rand.nextInt(maxNWords - minNWords) + minNWords;
@@ -257,17 +276,39 @@ public class Synthetic {
 		return post;
 	}
 
-	private double[][] genUserAuthority(int nUsers, int nTopics, double[][] userLatentFactors) {
+	private double[][] genUserAuthority(int nUsers, int nTopics, int nPlatforms, double[][] userLatentFactors,
+			int[][] userMostActivePlatform) {
 		double[][] authorities = new double[nUsers][nTopics];
 
+		System.out.println("\t\tSelecting authoritative users");
 		HashMap<Integer, HashSet<Integer>> authoritativeUsers = new HashMap<Integer, HashSet<Integer>>();
 		for (int z = 0; z < nTopics; z++) {
+			System.out.printf("\t\t\ttopic = %d\n", z);
+			int[] counts = new int[nPlatforms];
+			System.out.printf("\t\t\t\t");
+			for (int p = 0; p < nPlatforms; p++) {
+				counts[p] = (int) (proportionAuthoritativeUsers * nUsers / nPlatforms);
+				System.out.printf("\tcounts[%d] = %d", p, counts[p]);
+			}
+			System.out.println();
+
 			List<Integer> possibleUsers = interestedUsers.get(z);
+
+			System.out.printf("\t\t#posible users = %d\n", possibleUsers.size());
+			for (int u : possibleUsers) {
+				System.out.printf("\t\t\t u = %d active_p = %d\n", u, userMostActivePlatform[u][z]);
+			}
+
 			HashSet<Integer> userSet = new HashSet<Integer>();
 			while (userSet.size() < proportionAuthoritativeUsers * nUsers) {
 				int u = possibleUsers.get(rand.nextInt(possibleUsers.size()));
+				int p = userMostActivePlatform[u][z];
+				if (counts[p] <= 0) {
+					continue;
+				}
 				if (!userSet.contains(u)) {
 					userSet.add(u);
+					counts[p]--;
 				}
 			}
 			authoritativeUsers.put(z, userSet);
@@ -314,12 +355,12 @@ public class Synthetic {
 
 				if (authoritativeUsers.get(z).contains(u)) {
 					// authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
-					authorities[u][z] = userLatentFactors[u][z];
+					authorities[u][z] = userLatentFactors[u][z] + 1;
 					// if (authorities[u][z] < epsilon) {
 					// authorities[u][z] = epsilon;
 					// }
 				} else {
-					authorities[u][z] = 0.001;
+					authorities[u][z] = 0.001 + 1;
 					// authorities[u][z] = rand.nextDouble();
 					// authorities[u][z] = userLatentFactors[u][z] / 5;
 					// if (authorities[u][z] < epsilon) {
@@ -331,17 +372,27 @@ public class Synthetic {
 		return authorities;
 	}
 
-	private double[][] genUserHub(int nUsers, int nTopics, double[][] userLatentFactors) {
+	private double[][] genUserHub(int nUsers, int nTopics, int nPlatforms, double[][] userLatentFactors,
+			int[][] userMostActivePlatform) {
 		double[][] hubs = new double[nUsers][nTopics];
 
 		HashMap<Integer, HashSet<Integer>> hubUsers = new HashMap<Integer, HashSet<Integer>>();
 		for (int z = 0; z < nTopics; z++) {
+			int[] counts = new int[nPlatforms];
+			for (int p = 0; p < nPlatforms; p++) {
+				counts[p] = (int) (proportionAuthoritativeUsers * nUsers / nPlatforms);
+			}
 			List<Integer> possibleUsers = interestedUsers.get(z);
 			HashSet<Integer> userSet = new HashSet<Integer>();
 			while (userSet.size() < proportionAuthoritativeUsers * nUsers) {
 				int u = possibleUsers.get(rand.nextInt(possibleUsers.size()));
+				int p = userMostActivePlatform[u][z];
+				if (counts[p] <= 0) {
+					continue;
+				}
 				if (!userSet.contains(u)) {
 					userSet.add(u);
+					counts[p]--;
 				}
 			}
 			hubUsers.put(z, userSet);
@@ -384,13 +435,13 @@ public class Synthetic {
 				// hubs[u][z] = userLatentFactors[u][z];
 				// }
 				if (hubUsers.get(z).contains(u)) {
-					hubs[u][z] = userLatentFactors[u][z];
+					hubs[u][z] = userLatentFactors[u][z] + 1;
 					// hubs[u][z] = Math.pow(userLatentFactors[u][z], 2);
 					// if (hubs[u][z] < epsilon) {
 					// hubs[u][z] = epsilon;
 					// }
 				} else {
-					hubs[u][z] = 0.001;
+					hubs[u][z] = 0.001 + 1;
 					// hubs[u][z] = userLatentFactors[u][z] / 5;
 					// if (hubs[u][z] < epsilon) {
 					// hubs[u][z] = epsilon;
@@ -653,10 +704,15 @@ public class Synthetic {
 		System.out.println("generating platform preference");
 		double[][][] userPlatformPreference = genUserPlatformPreference(nUsers, nTopics, nPlatforms,
 				userActivePlatforms);
+
+		int[][] userMostActivePlatforms = getUserMostActivePlatform(nUsers, nTopics, nPlatforms,
+				userPlatformPreference);
+
 		System.out.println("generating authority");
-		double[][] userAuthorities = genUserAuthority(nUsers, nTopics, userLatentFactors);
+		double[][] userAuthorities = genUserAuthority(nUsers, nTopics, nPlatforms, userLatentFactors,
+				userMostActivePlatforms);
 		System.out.println("generating hub");
-		double[][] userHubs = genUserHub(nUsers, nTopics, userLatentFactors);
+		double[][] userHubs = genUserHub(nUsers, nTopics, nPlatforms, userLatentFactors, userMostActivePlatforms);
 		System.out.println("saving users' info");
 		saveUsers(nUsers, userActivePlatforms, outputPath);
 		System.out.println("saving words");
@@ -697,6 +753,5 @@ public class Synthetic {
 		// "F:/users/roylee/MP-HAT/mp-hat/syn_data");
 		// generator.genData(1000, 2, 10, 1000,
 		// "/Users/roylee/Documents/Chardonnay/mp-hat/syn_data/");
-
 	}
 }
