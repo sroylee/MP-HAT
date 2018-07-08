@@ -93,6 +93,8 @@ public class Synthetic {
 
 	private double lambda = 1;
 
+	private double shift = 0.1;
+
 	HashMap<Integer, List<Integer>> interestedUsers;
 
 	private int[] nTopicCounts;
@@ -355,12 +357,12 @@ public class Synthetic {
 
 				if (authoritativeUsers.get(z).contains(u)) {
 					// authorities[u][z] = Math.pow(userLatentFactors[u][z], 2);
-					authorities[u][z] = userLatentFactors[u][z] + 1;
+					authorities[u][z] = userLatentFactors[u][z] + shift;
 					// if (authorities[u][z] < epsilon) {
 					// authorities[u][z] = epsilon;
 					// }
 				} else {
-					authorities[u][z] = 0.001 + 1;
+					authorities[u][z] = 0.001 + shift;
 					// authorities[u][z] = rand.nextDouble();
 					// authorities[u][z] = userLatentFactors[u][z] / 5;
 					// if (authorities[u][z] < epsilon) {
@@ -435,13 +437,13 @@ public class Synthetic {
 				// hubs[u][z] = userLatentFactors[u][z];
 				// }
 				if (hubUsers.get(z).contains(u)) {
-					hubs[u][z] = userLatentFactors[u][z] + 1;
+					hubs[u][z] = userLatentFactors[u][z] + shift;
 					// hubs[u][z] = Math.pow(userLatentFactors[u][z], 2);
 					// if (hubs[u][z] < epsilon) {
 					// hubs[u][z] = epsilon;
 					// }
 				} else {
-					hubs[u][z] = 0.001 + 1;
+					hubs[u][z] = 0.001 + shift;
 					// hubs[u][z] = userLatentFactors[u][z] / 5;
 					// if (hubs[u][z] < epsilon) {
 					// hubs[u][z] = epsilon;
