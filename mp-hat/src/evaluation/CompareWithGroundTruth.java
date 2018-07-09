@@ -31,7 +31,6 @@ public class CompareWithGroundTruth {
 	private boolean userPlatformPreference = true;
 	
 	private int jcParameter =10;
-
 	private String groundtruthPath;
 	private String learntPath;
 	private String distance;
@@ -307,36 +306,38 @@ public class CompareWithGroundTruth {
 			}
 			
 			// Platform Topical Authorities
-			l_platformTopicalAuthorities = new double[nPlatforms][nTopics][nUsers];
-			for (int p=0;p<nPlatforms;p++){
-				for (int k = 0; k < nTopics; k++) {
-					for (int u=0; u< nUsers; u++){
-						if (userPlatformPreference){
-							double [] preferences = new double[nPlatforms];
-							preferences = MathTool.softmax(l_userPlatformPreferenceDistributions[u][k]);
-							l_platformTopicalAuthorities[p][k][u] = l_userAuthorityDistributions[u][k] * preferences[p];
-						} else {
-							l_platformTopicalAuthorities[p][k][u] = l_userAuthorityDistributions[u][k];
-						}	
-					}
-				}
-			}
-			
-			// Platform Topical Hubs
-			l_platformTopicalHubs = new double[nPlatforms][nTopics][nUsers];
-			for (int p=0;p<nPlatforms;p++){
-				for (int k = 0; k < nTopics; k++) {
-					for (int u=0; u< nUsers; u++){
-						if (userPlatformPreference){
-							double [] preferences = new double[nPlatforms];
-							preferences = MathTool.softmax(l_userPlatformPreferenceDistributions[u][k]);
-							l_platformTopicalHubs[p][k][u] = l_userHubDistributions[u][k] * preferences[p];
-						}else {
-							l_platformTopicalHubs[p][k][u] = l_userHubDistributions[u][k];
+				l_platformTopicalAuthorities = new double[nPlatforms][nTopics][nUsers];
+				for (int p=0;p<nPlatforms;p++){
+					for (int k = 0; k < nTopics; k++) {
+						for (int u=0; u< nUsers; u++){
+							if (userPlatformPreference){
+								double [] preferences = new double[nPlatforms];
+								preferences = MathTool.softmax(l_userPlatformPreferenceDistributions[u][k]);
+								l_platformTopicalAuthorities[p][k][u] = l_userAuthorityDistributions[u][k] * preferences[p];
+							} else {
+								l_platformTopicalAuthorities[p][k][u] = l_userAuthorityDistributions[u][k];
+							}	
 						}
 					}
 				}
-			}			
+			
+			
+				// Platform Topical Hubs
+				l_platformTopicalHubs = new double[nPlatforms][nTopics][nUsers];
+				for (int p=0;p<nPlatforms;p++){
+					for (int k = 0; k < nTopics; k++) {
+						for (int u=0; u< nUsers; u++){
+							if (userPlatformPreference){
+								double [] preferences = new double[nPlatforms];
+								preferences = MathTool.softmax(l_userPlatformPreferenceDistributions[u][k]);
+								l_platformTopicalHubs[p][k][u] = l_userHubDistributions[u][k] * preferences[p];
+							}else {
+								l_platformTopicalHubs[p][k][u] = l_userHubDistributions[u][k];
+							}
+						}
+					}
+				}
+			
 			
 			
 
@@ -455,10 +456,15 @@ public class CompareWithGroundTruth {
 					g_userAuhority = new HashMap<Integer, Double>();
 					l_userAuhority = new HashMap<Integer, Double>();
 					for (int u=0; u<nUsers;u++){
-//						g_userAuhority.put(u, g_platformTopicalAuthorities[p][k][u]);
-//						l_userAuhority.put(u, l_platformTopicalAuthorities[p][glMatch[k]][u]);
-						g_userAuhority.put(u, g_userAuthorityDistributions[u][k]);
-						l_userAuhority.put(u, l_userAuthorityDistributions[u][glMatch[k]]);
+//						if (userPlatformPreference==true){
+//							l_userAuhority.put(u, l_platformTopicalAuthorities[p][glMatch[k]][u]);
+//						} else {
+//							l_userAuhority.put(u, l_userAuthorityDistributions[u][glMatch[k]]);
+//						}
+						g_userAuhority.put(u, g_platformTopicalAuthorities[p][k][u]);
+						l_userAuhority.put(u, l_platformTopicalAuthorities[p][glMatch[k]][u]);
+//						g_userAuhority.put(u, g_userAuthorityDistributions[u][k]);
+//						l_userAuhority.put(u, l_userAuthorityDistributions[u][glMatch[k]]);
 					}
 					//Sort the two hashmaps by value
 					sorted_g_userAuhority =  entriesSortedByValues(g_userAuhority);
@@ -469,7 +475,7 @@ public class CompareWithGroundTruth {
 						g_authorityUsers[i] = g_element.getKey();
 						Entry<Integer, Double> l_element = sorted_l_userAuhority.get(i);
 						l_authorityUsers[i] = l_element.getKey();
-						System.out.println(g_authorityUsers[i]+","+l_authorityUsers[i]);
+						//System.out.println(g_authorityUsers[i]+","+l_authorityUsers[i]);
 					}
 				    
 				    double result =0;
@@ -495,8 +501,15 @@ public class CompareWithGroundTruth {
 					g_userHub = new HashMap<Integer, Double>();
 					l_userHub = new HashMap<Integer, Double>();
 					for (int u=0; u<nUsers;u++){
-						g_userHub.put(u, g_platformTopicalHubs[p][k][u]);
-						l_userHub.put(u, l_platformTopicalHubs[p][glMatch[k]][u]);	
+//						if (userPlatformPreference==true){
+//							l_userHub.put(u, l_platformTopicalHubs[p][glMatch[k]][u]);
+//						} else {
+//							l_userHub.put(u, l_userHubDistributions[u][glMatch[k]]);
+//						}
+						g_userHub.put(u, g_platformTopicalHubs[p][k][u]);	
+						l_userHub.put(u, l_platformTopicalHubs[p][glMatch[k]][u]);
+//						g_userHub.put(u, g_platformTopicalHubs[p][k][u]);
+//						l_userHub.put(u, l_platformTopicalHubs[p][glMatch[k]][u]);	
 					}
 					//Sort the two hashmaps by value
 					sorted_g_userHub =  entriesSortedByValues(g_userHub);
@@ -689,8 +702,7 @@ public class CompareWithGroundTruth {
 
 	    return sortedEntries;
 	}
-	
-	
+		
 	private static double jaccardSimilarity(double[] a, double[] b) {
 
 	    Set<Double> s1 = new HashSet<Double>();
@@ -720,10 +732,15 @@ public class CompareWithGroundTruth {
 		//"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_35.0_phi_1.0", "euclidean",
 		//"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
 		
-		CompareWithGroundTruth comparator = new
-				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
-				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_1.0_phi_1.0", "euclidean",
-				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
+//		CompareWithGroundTruth comparator = new
+//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/groundtruth",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/10/omega_1.0_phi_1.0", "euclidean",
+//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/mphat");
+
+//		CompareWithGroundTruth comparator = new
+//		CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
+//		"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/10/omega_1.0_phi_1.0", "euclidean",
+//		"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/evaluation/mphat");
 		
 //		CompareWithGroundTruth comparator = new
 //				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
@@ -735,10 +752,10 @@ public class CompareWithGroundTruth {
 //				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/HAT_10", "euclidean",
 //				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_skewed/evaluation/hat");
 		
-//		CompareWithGroundTruth comparator = new
-//				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
-//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/HAT_10", "euclidean",
-//				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/evaluation/hat");		
+		CompareWithGroundTruth comparator = new
+				CompareWithGroundTruth("F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/groundtruth",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/HAT_10", "euclidean",
+				"F:/users/roylee/MP-HAT/mp-hat/data/balance_2/syn_uniform/evaluation/hat");		
 
 		//CompareWithGroundTruth comparator = new CompareWithGroundTruth("E:/code/java/MP-HAT/mp-hat/syn_data",
 		//		"E:/code/java/MP-HAT/mp-hat/syn_data/10", "euclidean",
