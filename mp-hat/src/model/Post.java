@@ -10,4 +10,5 @@ public class Post {
 
 	// groundtruth
 	public int groundTruthTopic;
+	public int inferedPlatform;
 }

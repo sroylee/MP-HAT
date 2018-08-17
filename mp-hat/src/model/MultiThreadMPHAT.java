@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 
 import org.apache.commons.math3.distribution.GammaDistribution;
 
+import hoang.larc.tooler.SystemTool;
+
 import java.io.File;
 import java.io.FileWriter;
 
@@ -22,6 +24,7 @@ public class MultiThreadMPHAT {
 	public static String datapath;
 	public static Dataset dataset;
 	public static int nTopics;
+	public static int nPlatforms = 2;
 	public static int batch;
 	public static String outputPath;
 
@@ -55,9 +58,9 @@ public class MultiThreadMPHAT {
 	public static double epsilon = 0.000001;
 	public static double lamda = 0.01;
 	public static double omega = 35; // regularization for hub
-	public static double phi = 35; // regularization for authority
+	public static double phi = 1; // regularization for authority
 
-	public static Random rand = new Random(1);;
+	public static Random rand = new Random(1);
 
 	// Gibbs sampling variables
 	// user-topic counts
@@ -297,7 +300,8 @@ public class MultiThreadMPHAT {
 						for (int p = 0; p < Configure.NUM_OF_PLATFORM; p++) {
 							if (currUser.platforms[p] == 1) {
 								g = new GammaDistribution(alpha, theta);
-								currUser.topicalPlatformPreference[k][p] = g.sample();
+								//currUser.topicalPlatformPreference[k][p] = g.sample();
+								currUser.topicalPlatformPreference[k][p] = 0.5;
 							} else {
 								currUser.topicalPlatformPreference[k][p] = Double.NEGATIVE_INFINITY;
 							}
@@ -2818,7 +2822,7 @@ public class MultiThreadMPHAT {
 			System.out.println();
 		}
 		// print out the learned parameters
-		output_topicWord();
+		//output_topicWord();
 		output_topicInterest();
 		output_platformPreference();
 		output_authority();
@@ -2828,6 +2832,8 @@ public class MultiThreadMPHAT {
 		getLastLikelihoodPerplexity();
 		output_OptLikelihoodPerplexity();
 		output_LastLikelihoodPerplexity();
+		inferPostPlatform();
+		outputInferedPlatform();
 	}
 
 	public void output_topicWord() {
@@ -3050,6 +3056,60 @@ public class MultiThreadMPHAT {
 			fo.close();
 		} catch (Exception e) {
 			System.out.println("Error in writing to topical interest file!");
+			e.printStackTrace();
+			System.exit(0);
+		}
+	}
+	
+	private void inferPostPlatform() {
+		for (int u = 0; u < dataset.users.length; u++) {
+			for (int j = 0; j < dataset.users[u].posts.length; j++) {
+				if (dataset.users[u].postBatches[j] == batch)
+					continue;
+				int z = dataset.users[u].posts[j].topic;
+				double[] prp = MathTool
+						.softmax(dataset.users[u].optTopicalPlatformPreference[z]);
+				
+				if (prp[0] > prp[1]){
+					dataset.users[u].posts[j].inferedPlatform = 0;
+				} else{
+					dataset.users[u].posts[j].inferedPlatform = 1;
+				}
+				
+//				double maxLikelihood = getPostLikelihood(u, j, 0, 0);
+//				dataset.users[u].posts[j].inferedPlatform = 0;
+//				for (int p = 0; p < nPlatforms; p++) {
+//					for (int z = 0; z < nTopics; z++) {
+//						double likeLihood = getPostLikelihood(u, j, p, z);
+//						if (maxLikelihood < likeLihood) {
+//							maxLikelihood = likeLihood;
+//							dataset.users[u].posts[j].inferedPlatform = p;
+//						}
+//					}
+//				}
+			}
+		}
+	}
+	
+	private void outputInferedPlatform() {
+		try {
+			SystemTool.createFolder(outputPath+ "/" + nTopics + "/omega_" + omega + "_phi_" + phi +"/", "inferedPlatforms");
+			for (int u = 0; u < dataset.users.length; u++) {
+				//String filename = outputPath + SystemTool.pathSeparator + "inferedPlatforms" + SystemTool.pathSeparator
+				//		+ dataset.users[u].userId + ".csv";
+				File f = new File(outputPath+ "/" + nTopics + "/omega_" + omega + "_phi_" + phi +"/", "inferedPlatforms"+"/"
+						+dataset.users[u].userId + ".csv");
+				FileWriter fo = new FileWriter(f);
+				//BufferedWriter bw = new BufferedWriter(new FileWriter(filename));
+				for (int j = 0; j < dataset.users[u].posts.length; j++) {
+					if (dataset.users[u].postBatches[j] == batch)
+						continue;
+					fo.write(dataset.users[u].posts[j].postId + "," + dataset.users[u].posts[j].inferedPlatform + "," +  dataset.users[u].posts[j].platform + "\n");
+				}
+				fo.close();
+			}
+		} catch (Exception e) {
+			System.out.println("Error in writing out post topics to file!");
 			e.printStackTrace();
 			System.exit(0);
 		}
